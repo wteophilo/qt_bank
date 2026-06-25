@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QtBank.Api", "QtBank.Api\QtBank.Api.csproj", "{48E0063E-A29E-404A-824B-0DC6FAFF5B85}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QtBank.Api.Tests", "QtBank.Api.Tests\QtBank.Api.Tests.csproj", "{AEE1E2DE-F376-45D8-B841-365C42412F84}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{48E0063E-A29E-404A-824B-0DC6FAFF5B85}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{48E0063E-A29E-404A-824B-0DC6FAFF5B85}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{48E0063E-A29E-404A-824B-0DC6FAFF5B85}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AEE1E2DE-F376-45D8-B841-365C42412F84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AEE1E2DE-F376-45D8-B841-365C42412F84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AEE1E2DE-F376-45D8-B841-365C42412F84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AEE1E2DE-F376-45D8-B841-365C42412F84}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
