@@ -163,3 +163,5 @@ app.MapTokenEndpoints();
 app.MapAccountEndpoints();
 
 app.Run();
+
+public partial class Program { }
