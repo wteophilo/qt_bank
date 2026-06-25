@@ -1,0 +1,27 @@
+@QtBank.Api_HostAddress = http://localhost:5044
+
+### Login request (Administrator)
+# @name loginAdmin
+POST {{QtBank.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@qtbank.com",
+  "password": "password123"
+}
+
+### Get Weather Forecast (Authorized - requires Bearer token)
+@authToken = {{loginAdmin.response.body.token}}
+
+GET {{QtBank.Api_HostAddress}}/api/weatherforecast?days=5
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### Login request (Validation Error Demo)
+POST {{QtBank.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "invalid-email",
+  "password": "short"
+}
