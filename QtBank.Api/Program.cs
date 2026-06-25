@@ -1,83 +1,52 @@
-using System.Reflection;
-using System.Text;
-using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
-using QtBank.Api.Common.Behaviors;
-using QtBank.Api.Common.Exceptions;
-using QtBank.Api.Common.Security;
+using System;
+using System.Text;
+using MediatR;
+using FluentValidation;
+using QtBank.Api.Application.Behaviors;
+using QtBank.Api.Application.Accounts.Commands;
+using QtBank.Api.Application.DTOs;
+using QtBank.Api.Domain.Repositories;
+using QtBank.Api.Domain.Models;
+using QtBank.Api.Infrastructure.Repositories;
+using QtBank.Api.Infrastructure.Messaging;
+using QtBank.Api.Infrastructure.Security;
+using QtBank.Api.Infrastructure.Middlewares;
+using Microsoft.AspNetCore.Builder;
+using QtBank.Api.Infrastructure.Endpoints.v1;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add Controllers
-builder.Services.AddControllers();
-
-// 2. Configure JWT Settings and Add Token Generator
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
-builder.Services.AddSingleton<ITokenGenerator, TokenGenerator>();
-
-// 3. Register FluentValidation Validators
-builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-
-// 4. Register MediatR with pipeline behaviors
-builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
-    
-    // Register the validation pipeline behavior
-    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
-});
-
-// 5. Register Authentication and JWT Bearer Configuration
-var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
-var key = Encoding.UTF8.GetBytes(jwtSettings?.Secret ?? "super_secret_key_that_is_long_enough_for_sha256_at_least_32_characters");
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false; // Set to true in production
-    options.SaveToken = true;
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings?.Issuer,
-        ValidAudience = jwtSettings?.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ClockSkew = TimeSpan.Zero
-    };
-});
-
-builder.Services.AddAuthorization();
-
-// 6. Register Swagger and configure JWT Security Definition
+// Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "QtBank API",
         Version = "v1",
-        Description = "ASP.NET Core Web API Boilerplate with Clean Architecture, MediatR, FluentValidation, and JWT Auth."
+        Title = "QtBank API",
+        Description = "A secure REST API for banking operations, transactions, and account management.",
+        Contact = new OpenApiContact
+        {
+            Name = "QtBank Engineering Team",
+            Email = "support@qtbank.com"
+        }
     });
 
-    options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, new OpenApiSecurityScheme
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Description = "Please enter token as: 'Bearer {your_JWT_token}'",
-        In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
-        Scheme = JwtBearerDefaults.AuthenticationScheme,
-        BearerFormat = "JWT"
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\nExample: \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\""
     });
-
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -86,37 +55,111 @@ builder.Services.AddSwaggerGen(options =>
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id = JwtBearerDefaults.AuthenticationScheme
+                    Id = "Bearer"
                 }
             },
             Array.Empty<string>()
         }
     });
+
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (System.IO.File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
 });
 
-// 7. Configure Global Exception Handler (introduced in .NET 8)
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddProblemDetails();
+
+// Register FluentValidation validators
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+
+// Configure MediatR
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+});
+
+// Register Domain and Infrastructure dependencies
+builder.Services.AddSingleton<IAccountRepository, InMemoryAccountRepository>();
+builder.Services.AddSingleton<IPubSubPublisher, InMemoryPubSubPublisher>();
+
+// Configure JWT Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = TokenGenerator.Issuer,
+        ValidAudience = TokenGenerator.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TokenGenerator.Secret))
+    };
+});
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.UseValidationExceptionMiddleware();
+
+// Seed mock data for testing in Swagger UI
+using (var scope = app.Services.CreateScope())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
+    var accountRepo = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
+
+    var aliceId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    accountRepo.SaveAsync(new Account
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "QtBank API v1");
-    });
+        Id = aliceId,
+        AccountNumber = "111111",
+        Balance = 5000.00m,
+        OwnerName = "Alice Smith",
+        CreatedAt = DateTime.UtcNow.AddMonths(-1),
+        Status = AccountStatus.Active
+    }).GetAwaiter().GetResult();
+
+    var bobId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    accountRepo.SaveAsync(new Account
+    {
+        Id = bobId,
+        AccountNumber = "222222",
+        Balance = 150.50m,
+        OwnerName = "Bob Johnson",
+        CreatedAt = DateTime.UtcNow.AddDays(-10),
+        Status = AccountStatus.Active
+    }).GetAwaiter().GetResult();
+
+    var charlieId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    accountRepo.SaveAsync(new Account
+    {
+        Id = charlieId,
+        AccountNumber = "333333",
+        Balance = 0.00m,
+        OwnerName = "Charlie Davis",
+        CreatedAt = DateTime.UtcNow.AddDays(-2),
+        Status = AccountStatus.Inactive
+    }).GetAwaiter().GetResult();
 }
 
-app.UseExceptionHandler();
+// Configure the HTTP request pipeline.
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapTokenEndpoints();
+app.MapAccountEndpoints();
 
 app.Run();
