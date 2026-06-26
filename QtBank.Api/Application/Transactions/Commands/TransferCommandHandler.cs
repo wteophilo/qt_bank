@@ -98,7 +98,7 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
             SourceAccountNumber = request.SourceAccountNumber,
             DestinationAccountNumber = request.DestinationAccountNumber,
             Amount = request.Amount,
-            Currency = request.Currency.ToUpperInvariant(),
+            Currency = request.Currency,
             IdempotencyKey = Guid.NewGuid(),
             Status = TransactionStatus.Processing,
             CreatedAt = DateTime.UtcNow
@@ -109,7 +109,7 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
 
     private async Task PublishTransferCompletedEventAsync(Transaction tx, CancellationToken cancellationToken)
     {
-        var ev = new TransferCompleted(tx.Id, tx.SourceAccountNumber, tx.DestinationAccountNumber, tx.Amount, tx.Currency, tx.IdempotencyKey, tx.Status.ToString(), tx.CreatedAt);
+        var ev = new TransferCompleted(tx.Id, tx.SourceAccountNumber, tx.DestinationAccountNumber, tx.Amount, tx.Currency.ToString(), tx.IdempotencyKey, tx.Status.ToString(), tx.CreatedAt);
         await _publisher.PublishAsync("transfers-topic", ev, cancellationToken);
     }
 }

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using QtBank.Api.Application.DTOs;
 using QtBank.Api.Application.Transactions.Commands;
+using QtBank.Api.Domain.Models;
 using QtBank.Api.Infrastructure.Security;
 using Xunit;
 
@@ -41,7 +42,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
             "111111",
             "222222",
             100m,
-            "USD"
+            Currency.USD
         );
 
         // Act
@@ -56,7 +57,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new TransferCommand("111111", "222222", 100m, "USD");
+        var command = new TransferCommand("111111", "222222", 100m, Currency.USD);
 
         // Get initial balances
         var aliceBeforeResponse = await client.GetAsync("/accounts/111111/balance");
@@ -96,7 +97,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         // Arrange
         var client = CreateAuthorizedClient();
         // Negative amount, same source/destination, invalid currency
-        var command = new TransferCommand("111111", "111111", -50m, "CAD");
+        var command = new TransferCommand("111111", "111111", -50m, (Currency)999);
 
         // Act
         var response = await client.PostAsJsonAsync("/transactions/transfer", command);
@@ -130,7 +131,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new TransferCommand("999999", "222222", 50m, "USD");
+        var command = new TransferCommand("999999", "222222", 50m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/transactions/transfer", command);
@@ -148,7 +149,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         // Arrange
         var client = CreateAuthorizedClient();
         // Bob's initial balance is 150.50m (or around that depending on other test runs, but he definitely has less than 10000m)
-        var command = new TransferCommand("222222", "111111", 10000m, "USD");
+        var command = new TransferCommand("222222", "111111", 10000m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/transactions/transfer", command);
@@ -165,7 +166,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new TransferCommand("333333", "111111", 10m, "USD");
+        var command = new TransferCommand("333333", "111111", 10m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/transactions/transfer", command);
@@ -175,5 +176,25 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var errorResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
         errorResponse.TryGetProperty("error", out var errorProperty).Should().BeTrue();
         errorProperty.GetString().Should().Be("Source account is not active.");
+    }
+
+    [Fact]
+    public async Task Transfer_WithInvalidCurrencyString_Returns400BadRequest()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var rawPayload = new
+        {
+            SourceAccountNumber = "111111",
+            DestinationAccountNumber = "222222",
+            Amount = 100m,
+            Currency = "KHR" // Invalid string for Currency enum
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/transactions/transfer", rawPayload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

@@ -30,7 +30,7 @@ public class Transaction
     /// <summary>
     /// Currency of the transaction (e.g. "BRL", "USD").
     /// </summary>
-    public string Currency { get; set; } = string.Empty;
+    public Currency Currency { get; set; }
 
     /// <summary>
     /// Idempotency key used to prevent duplicate operations.

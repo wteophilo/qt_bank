@@ -2,6 +2,7 @@ using System;
 using MediatR;
 using QtBank.Api.Application.Common;
 using QtBank.Api.Application.DTOs;
+using QtBank.Api.Domain.Models;
 
 namespace QtBank.Api.Application.Transactions.Commands;
 
@@ -11,10 +12,10 @@ namespace QtBank.Api.Application.Transactions.Commands;
 /// <param name="SourceAccountNumber">The account number from which money is debited.</param>
 /// <param name="DestinationAccountNumber">The account number to which money is credited.</param>
 /// <param name="Amount">The amount of money to transfer.</param>
-/// <param name="Currency">The currency of the transaction (e.g. "BRL", "USD").</param>
+/// <param name="Currency">The currency of the transaction (BRL, USD, EUR).</param>
 public record TransferCommand(
     string SourceAccountNumber,
     string DestinationAccountNumber,
     decimal Amount,
-    string Currency
+    Currency Currency
 ) : IRequest<Result<TransferResponseDto>>;

@@ -1,6 +1,7 @@
 using System;
 using FluentAssertions;
 using QtBank.Api.Application.Transactions.Commands;
+using QtBank.Api.Domain.Models;
 using Xunit;
 
 namespace QtBank.Api.Tests.Application.Transactions.Commands;
@@ -22,7 +23,7 @@ public class TransferValidatorTests
             "111111",
             "222222",
             150.00m,
-            "USD"
+            Currency.USD
         );
 
         // Act
@@ -41,7 +42,7 @@ public class TransferValidatorTests
             "",
             "222222",
             150.00m,
-            "USD"
+            Currency.USD
         );
 
         // Act
@@ -62,7 +63,7 @@ public class TransferValidatorTests
             "111111",
             "",
             150.00m,
-            "USD"
+            Currency.USD
         );
 
         // Act
@@ -84,7 +85,7 @@ public class TransferValidatorTests
             accountNo,
             accountNo,
             150.00m,
-            "USD"
+            Currency.USD
         );
 
         // Act
@@ -108,7 +109,7 @@ public class TransferValidatorTests
             "111111",
             "222222",
             invalidAmount,
-            "USD"
+            Currency.USD
         );
 
         // Act
@@ -121,30 +122,6 @@ public class TransferValidatorTests
             error.ErrorMessage == "Amount must be greater than zero.");
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    [InlineData(null)]
-    public void Validator_ShouldFail_WhenCurrencyIsEmptyOrNull(string? invalidCurrency)
-    {
-        // Arrange
-        var command = new TransferCommand(
-            "111111",
-            "222222",
-            100m,
-            invalidCurrency!
-        );
-
-        // Act
-        var result = _validator.Validate(command);
-
-        // Assert
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(error =>
-            error.PropertyName == nameof(TransferCommand.Currency) &&
-            error.ErrorMessage.Contains("Currency is required."));
-    }
-
     [Fact]
     public void Validator_ShouldFail_WhenCurrencyIsUnsupported()
     {
@@ -153,7 +130,7 @@ public class TransferValidatorTests
             "111111",
             "222222",
             100m,
-            "CAD" // Unsupported
+            (Currency)999 // Unsupported
         );
 
         // Act
@@ -163,6 +140,6 @@ public class TransferValidatorTests
         result.IsValid.Should().BeFalse();
         result.Errors.Should().ContainSingle(error =>
             error.PropertyName == nameof(TransferCommand.Currency) &&
-            error.ErrorMessage == "Currency must be one of the supported types: BRL, USD, EUR.");
+            error.ErrorMessage == "Currency must be one of the supported types: BRL, USD, EUR, CAD.");
     }
 }

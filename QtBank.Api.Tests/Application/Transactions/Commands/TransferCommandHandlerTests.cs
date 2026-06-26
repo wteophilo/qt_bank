@@ -69,7 +69,7 @@ public class TransferCommandHandlerTests
         _transactionRepository.SaveAsync(Arg.Any<Transaction>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => callInfo.Arg<Transaction>());
 
-        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 300m, "USD");
+        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 300m, Currency.USD);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -93,7 +93,7 @@ public class TransferCommandHandlerTests
                 t.SourceAccountNumber == sourceAccountNumber &&
                 t.DestinationAccountNumber == destAccountNumber &&
                 t.Amount == 300m &&
-                t.Currency == "USD" &&
+                t.Currency == Currency.USD &&
                 t.IdempotencyKey != Guid.Empty &&
                 t.Status == TransactionStatus.Processing
             ),
@@ -125,7 +125,7 @@ public class TransferCommandHandlerTests
         _accountRepository.GetByNumberAsync(sourceAccountNumber, Arg.Any<CancellationToken>())
             .Returns((Account?)null);
 
-        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 100m, "USD");
+        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 100m, Currency.USD);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -146,7 +146,7 @@ public class TransferCommandHandlerTests
         _accountRepository.GetByNumberAsync(sourceAccountNumber, Arg.Any<CancellationToken>()).Returns(sourceAccount);
         _accountRepository.GetByNumberAsync(destAccountNumber, Arg.Any<CancellationToken>()).Returns((Account?)null);
 
-        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 100m, "USD");
+        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 100m, Currency.USD);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -168,7 +168,7 @@ public class TransferCommandHandlerTests
         _accountRepository.GetByNumberAsync(sourceAccountNumber, Arg.Any<CancellationToken>()).Returns(sourceAccount);
         _accountRepository.GetByNumberAsync(destAccountNumber, Arg.Any<CancellationToken>()).Returns(destAccount);
 
-        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 100m, "USD");
+        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 100m, Currency.USD);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -190,7 +190,7 @@ public class TransferCommandHandlerTests
         _accountRepository.GetByNumberAsync(sourceAccountNumber, Arg.Any<CancellationToken>()).Returns(sourceAccount);
         _accountRepository.GetByNumberAsync(destAccountNumber, Arg.Any<CancellationToken>()).Returns(destAccount);
 
-        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 100m, "USD");
+        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 100m, Currency.USD);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -212,7 +212,7 @@ public class TransferCommandHandlerTests
         _accountRepository.GetByNumberAsync(sourceAccountNumber, Arg.Any<CancellationToken>()).Returns(sourceAccount);
         _accountRepository.GetByNumberAsync(destAccountNumber, Arg.Any<CancellationToken>()).Returns(destAccount);
 
-        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 100m, "USD");
+        var command = new TransferCommand(sourceAccountNumber, destAccountNumber, 100m, Currency.USD);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

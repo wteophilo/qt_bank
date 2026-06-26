@@ -1,6 +1,6 @@
 using System;
-using System.Linq;
 using FluentValidation;
+using QtBank.Api.Domain.Models;
 
 namespace QtBank.Api.Application.Transactions.Commands;
 
@@ -9,8 +9,6 @@ namespace QtBank.Api.Application.Transactions.Commands;
 /// </summary>
 public class TransferValidator : AbstractValidator<TransferCommand>
 {
-    private static readonly string[] SupportedCurrencies = ["BRL", "USD", "EUR"];
-
     public TransferValidator()
     {
         RuleFor(x => x.SourceAccountNumber)
@@ -26,8 +24,6 @@ public class TransferValidator : AbstractValidator<TransferCommand>
             .GreaterThan(0).WithMessage("Amount must be greater than zero.");
 
         RuleFor(x => x.Currency)
-            .NotEmpty().WithMessage("Currency is required.")
-            .Must(currency => SupportedCurrencies.Contains(currency, StringComparer.OrdinalIgnoreCase))
-            .WithMessage($"Currency must be one of the supported types: {string.Join(", ", SupportedCurrencies)}.");
+            .IsInEnum().WithMessage("Currency must be one of the supported types: BRL, USD, EUR, CAD.");
     }
 }
