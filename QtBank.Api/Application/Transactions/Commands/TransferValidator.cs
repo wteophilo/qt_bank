@@ -26,5 +26,8 @@ public class TransferValidator : AbstractValidator<TransferCommand>
         RuleFor(x => x.Currency)
             .IsInEnum()
             .WithMessage(x => $"Currency must be one of the supported types: {string.Join(", ", Enum.GetNames<Currency>())}.");
+
+        RuleFor(x => x.IdempotencyKey)
+            .NotEmpty().WithMessage("Idempotency key is required.");
     }
 }

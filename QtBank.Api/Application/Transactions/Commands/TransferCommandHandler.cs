@@ -38,6 +38,14 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
     {
         _logger.LogInformation("Processing TransferCommand from {Source} to {Dest}", request.SourceAccountNumber, request.DestinationAccountNumber);
 
+        // 0. Check Idempotency
+        var existingTx = await _transactionRepository.GetByIdempotencyKeyAsync(request.IdempotencyKey, cancellationToken);
+        if (existingTx is not null)
+        {
+            _logger.LogInformation("Transfer already processed for idempotency key {Key}", request.IdempotencyKey);
+            return Result<TransferResponseDto>.Ok(new TransferResponseDto(existingTx.Id, existingTx.Status.ToString(), existingTx.CreatedAt));
+        }
+
         // 1. Fetch Accounts
         var sourceAccount = await _accountRepository.GetByNumberAsync(request.SourceAccountNumber, cancellationToken);
         var destinationAccount = await _accountRepository.GetByNumberAsync(request.DestinationAccountNumber, cancellationToken);
@@ -86,8 +94,8 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
 
     private async Task<Transaction> ExecuteAndPersistTransferAsync(Account source, Account destination, TransferCommand request, CancellationToken cancellationToken)
     {
-        source.Balance -= request.Amount;
-        destination.Balance += request.Amount;
+        source.Debit(request.Amount);
+        destination.Credit(request.Amount);
 
         await _accountRepository.SaveAsync(source, cancellationToken);
         await _accountRepository.SaveAsync(destination, cancellationToken);
@@ -100,7 +108,7 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
             Amount = request.Amount,
             Currency = request.Currency,
             Type = TransactionType.Transfer,
-            IdempotencyKey = Guid.NewGuid(),
+            IdempotencyKey = request.IdempotencyKey,
             Status = TransactionStatus.Processing,
             CreatedAt = DateTime.UtcNow
         };

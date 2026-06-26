@@ -142,4 +142,26 @@ public class TransferValidatorTests
             error.PropertyName == nameof(TransferCommand.Currency) &&
             error.ErrorMessage == "Currency must be one of the supported types: BRL, USD, EUR, CAD.");
     }
+
+    [Fact]
+    public void Validator_ShouldFail_WhenIdempotencyKeyIsEmpty()
+    {
+        // Arrange
+        var command = new TransferCommand(
+            "111111",
+            "222222",
+            150.00m,
+            Currency.USD,
+            Guid.Empty
+        );
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(error =>
+            error.PropertyName == nameof(TransferCommand.IdempotencyKey) &&
+            error.ErrorMessage == "Idempotency key is required.");
+    }
 }

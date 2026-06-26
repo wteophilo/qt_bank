@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 using MediatR;
 using QtBank.Api.Application.Common;
 using QtBank.Api.Application.DTOs;
@@ -9,13 +10,20 @@ namespace QtBank.Api.Application.Transactions.Commands;
 /// <summary>
 /// Command to request a money transfer between two accounts.
 /// </summary>
-/// <param name="SourceAccountNumber">The account number from which money is debited.</param>
-/// <param name="DestinationAccountNumber">The account number to which money is credited.</param>
-/// <param name="Amount">The amount of money to transfer.</param>
-/// <param name="Currency">The currency of the transaction (BRL, USD, EUR).</param>
+[method: JsonConstructor]
 public record TransferCommand(
     string SourceAccountNumber,
     string DestinationAccountNumber,
     decimal Amount,
-    Currency Currency
-) : IRequest<Result<TransferResponseDto>>;
+    Currency Currency,
+    Guid IdempotencyKey
+) : IRequest<Result<TransferResponseDto>>
+{
+    /// <summary>
+    /// Overloaded constructor for compatibility with existing code and tests.
+    /// </summary>
+    public TransferCommand(string sourceAccountNumber, string destinationAccountNumber, decimal amount, Currency currency)
+        : this(sourceAccountNumber, destinationAccountNumber, amount, currency, Guid.NewGuid())
+    {
+    }
+}
