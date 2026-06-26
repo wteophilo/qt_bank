@@ -55,6 +55,41 @@ public static class TransactionEndpoints
         })
         .WithTags("Transactions");
 
+        app.MapPost("/api/v1/transactions/deposit", async (DepositCommand command, IMediator mediator) =>
+        {
+            try
+            {
+                var result = await mediator.Send(command);
+                if (!result.IsSuccess)
+                {
+                    return Results.BadRequest(new { error = result.Error });
+                }
+
+                // Return 202 Accepted containing the TransactionId, Status, and Timestamp
+                return Results.Accepted(uri: null, value: result.Value);
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "An error occurred while processing the deposit.");
+            }
+        })
+        .RequireAuthorization()
+        .WithName("DepositFunds")
+        .Produces<TransferResponseDto>(StatusCodes.Status202Accepted)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .WithOpenApi(operation => new(operation)
+        {
+            Summary = "Deposit money into a bank account",
+            Description = "Deposits the specified amount into the destination account. Validates active account status."
+        })
+        .WithTags("Transactions");
+
         return app;
     }
 }

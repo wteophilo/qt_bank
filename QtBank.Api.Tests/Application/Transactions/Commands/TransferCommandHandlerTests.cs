@@ -94,6 +94,7 @@ public class TransferCommandHandlerTests
                 t.DestinationAccountNumber == destAccountNumber &&
                 t.Amount == 300m &&
                 t.Currency == Currency.USD &&
+                t.Type == TransactionType.Transfer &&
                 t.IdempotencyKey != Guid.Empty &&
                 t.Status == TransactionStatus.Processing
             ),

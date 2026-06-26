@@ -48,6 +48,7 @@ public class GetAccountTransactionsQueryHandler : IRequestHandler<GetAccountTran
             t.DestinationAccountNumber,
             t.Amount,
             t.Currency.ToString(),
+            t.Type.ToString(),
             t.IdempotencyKey,
             t.Status.ToString(),
             t.CreatedAt

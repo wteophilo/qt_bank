@@ -11,6 +11,7 @@ public record TransactionDto(
     string DestinationAccountNumber,
     decimal Amount,
     string Currency,
+    string Type,
     Guid IdempotencyKey,
     string Status,
     DateTime CreatedAt
