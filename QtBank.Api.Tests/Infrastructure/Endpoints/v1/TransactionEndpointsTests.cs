@@ -51,7 +51,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         );
 
         // Act
-        var response = await client.PostAsJsonAsync("/transactions/transfer", command);
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -65,16 +65,16 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var command = new TransferCommand("111111", "222222", 100m, Currency.USD);
 
         // Get initial balances
-        var aliceBeforeResponse = await client.GetAsync("/accounts/111111/balance");
+        var aliceBeforeResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
         var aliceBefore = await aliceBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
         var aliceInitial = aliceBefore!.Balance;
 
-        var bobBeforeResponse = await client.GetAsync("/accounts/222222/balance");
+        var bobBeforeResponse = await client.GetAsync("/api/v1/accounts/222222/balance");
         var bobBefore = await bobBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
         var bobInitial = bobBefore!.Balance;
 
         // Act - Execute Transfer
-        var response = await client.PostAsJsonAsync("/transactions/transfer", command);
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
 
         // Assert Endpoint Response
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
@@ -85,12 +85,12 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         transferResult.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
 
         // Act - Verify Balances Updated (Alice: -100m; Bob: +100m)
-        var aliceBalanceResponse = await client.GetAsync("/accounts/111111/balance");
+        var aliceBalanceResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
         var aliceBalance = await aliceBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
         aliceBalance.Should().NotBeNull();
         aliceBalance!.Balance.Should().Be(aliceInitial - 100m);
 
-        var bobBalanceResponse = await client.GetAsync("/accounts/222222/balance");
+        var bobBalanceResponse = await client.GetAsync("/api/v1/accounts/222222/balance");
         var bobBalance = await bobBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
         bobBalance.Should().NotBeNull();
         bobBalance!.Balance.Should().Be(bobInitial + 100m);
@@ -105,7 +105,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var command = new TransferCommand("111111", "111111", -50m, (Currency)999);
 
         // Act
-        var response = await client.PostAsJsonAsync("/transactions/transfer", command);
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -139,7 +139,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var command = new TransferCommand("999999", "222222", 50m, Currency.USD);
 
         // Act
-        var response = await client.PostAsJsonAsync("/transactions/transfer", command);
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -157,7 +157,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var command = new TransferCommand("222222", "111111", 10000m, Currency.USD);
 
         // Act
-        var response = await client.PostAsJsonAsync("/transactions/transfer", command);
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -174,7 +174,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var command = new TransferCommand("333333", "111111", 10m, Currency.USD);
 
         // Act
-        var response = await client.PostAsJsonAsync("/transactions/transfer", command);
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -197,7 +197,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/transactions/transfer", rawPayload);
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", rawPayload);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -231,7 +231,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var command = new TransferCommand("111111", "222222", 100m, Currency.USD);
 
         // Act
-        var response = await client.PostAsJsonAsync("/transactions/transfer", command);
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
