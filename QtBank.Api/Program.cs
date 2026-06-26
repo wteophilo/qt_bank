@@ -9,7 +9,6 @@ using System.Text;
 using MediatR;
 using FluentValidation;
 using QtBank.Api.Application.Behaviors;
-using QtBank.Api.Application.Accounts.Commands;
 using QtBank.Api.Application.DTOs;
 using QtBank.Api.Domain.Repositories;
 using QtBank.Api.Domain.Models;
