@@ -13,7 +13,7 @@ public static class AuthEndpoints
     public static IEndpointRouteBuilder MapTokenEndpoints(this IEndpointRouteBuilder app)
     {
         // 1. Auth Endpoint (Public)
-        app.MapPost("/auth/token", (TokenRequest request) =>
+        app.MapPost("/api/v1/auth/token", (TokenRequest request) =>
         {
             if (string.IsNullOrWhiteSpace(request.Username))
             {

@@ -46,7 +46,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var command = new CreateAccountCommand("123456", 1000m, "Alice Smith", AccountStatus.Active);
 
         // Act
-        var response = await client.PostAsJsonAsync("/accounts", command);
+        var response = await client.PostAsJsonAsync("/api/v1/accounts", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -60,7 +60,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var command = new CreateAccountCommand("987654", 2500m, "Jane Doe", AccountStatus.Active);
 
         // Act
-        var response = await client.PostAsJsonAsync("/accounts", command);
+        var response = await client.PostAsJsonAsync("/api/v1/accounts", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -74,7 +74,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         dto.Status.Should().Be("Active");
         dto.Id.Should().NotBeEmpty();
 
-        response.Headers.Location!.ToString().Should().Be($"/accounts/{dto.Id}");
+        response.Headers.Location!.ToString().Should().Be($"/api/v1/accounts/{dto.Id}");
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var command = new CreateAccountCommand("", -10m, "", AccountStatus.Active);
 
         // Act
-        var response = await client.PostAsJsonAsync("/accounts", command);
+        var response = await client.PostAsJsonAsync("/api/v1/accounts", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -135,7 +135,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var command = new CreateAccountCommand("111222", 100m, "Bob Smith", AccountStatus.Active);
 
         // Act
-        var response = await client.PostAsJsonAsync("/accounts", command);
+        var response = await client.PostAsJsonAsync("/api/v1/accounts", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -167,7 +167,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var command = new CreateAccountCommand("111222", 100m, "Bob Smith", AccountStatus.Active);
 
         // Act
-        var response = await client.PostAsJsonAsync("/accounts", command);
+        var response = await client.PostAsJsonAsync("/api/v1/accounts", command);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
@@ -186,7 +186,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var client = _factory.CreateClient();
 
         // Act
-        var response = await client.GetAsync("/accounts/111111/balance");
+        var response = await client.GetAsync("/api/v1/accounts/111111/balance");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -200,7 +200,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var accountNumber = "111111";
 
         // Act
-        var response = await client.GetAsync($"/accounts/{accountNumber}/balance");
+        var response = await client.GetAsync($"/api/v1/accounts/{accountNumber}/balance");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -219,7 +219,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var accountNumber = "999999";
 
         // Act
-        var response = await client.GetAsync($"/accounts/{accountNumber}/balance");
+        var response = await client.GetAsync($"/api/v1/accounts/{accountNumber}/balance");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -237,7 +237,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var accountNumber = "   "; // Whitespace
 
         // Act
-        var response = await client.GetAsync($"/accounts/{Uri.EscapeDataString(accountNumber)}/balance");
+        var response = await client.GetAsync($"/api/v1/accounts/{Uri.EscapeDataString(accountNumber)}/balance");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);

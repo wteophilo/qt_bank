@@ -18,12 +18,12 @@ public static class AccountEndpoints
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder app)
     {
         // 1. Account Endpoints (Authorized CRUD)
-        app.MapPost("/accounts", async (CreateAccountCommand command, IMediator mediator) =>
+        app.MapPost("/api/v1/accounts", async (CreateAccountCommand command, IMediator mediator) =>
         {
             try
             {
                 var response = await mediator.Send(command);
-                return Results.Created($"/accounts/{response.Id}", response);
+                return Results.Created($"/api/v1/accounts/{response.Id}", response);
             }
             catch (ArgumentException ex)
             {
@@ -50,7 +50,7 @@ public static class AccountEndpoints
         })
         .WithTags("Accounts");
 
-        app.MapGet("/accounts/{accountNumber}/balance", async (string accountNumber, IMediator mediator) =>
+        app.MapGet("/api/v1/accounts/{accountNumber}/balance", async (string accountNumber, IMediator mediator) =>
         {
             var response = await mediator.Send(new GetAccountBalanceQuery(accountNumber));
             if (response == null)

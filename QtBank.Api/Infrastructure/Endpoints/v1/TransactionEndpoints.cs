@@ -19,7 +19,7 @@ public static class TransactionEndpoints
     /// </summary>
     public static IEndpointRouteBuilder MapTransactionEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/transactions/transfer", async (TransferCommand command, IMediator mediator) =>
+        app.MapPost("/api/v1/transactions/transfer", async (TransferCommand command, IMediator mediator) =>
         {
             try
             {

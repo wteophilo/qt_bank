@@ -31,7 +31,7 @@ public class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         var request = new TokenRequest(invalidUsername!);
 
         // Act
-        var response = await client.PostAsJsonAsync("/auth/token", request);
+        var response = await client.PostAsJsonAsync("/api/v1/auth/token", request);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -48,7 +48,7 @@ public class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         var request = new TokenRequest(username);
 
         // Act
-        var response = await client.PostAsJsonAsync("/auth/token", request);
+        var response = await client.PostAsJsonAsync("/api/v1/auth/token", request);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
