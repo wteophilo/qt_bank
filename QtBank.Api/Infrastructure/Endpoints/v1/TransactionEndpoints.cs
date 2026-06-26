@@ -90,6 +90,41 @@ public static class TransactionEndpoints
         })
         .WithTags("Transactions");
 
+        app.MapPost("/api/v1/transactions/withdrawal", async (WithdrawalCommand command, IMediator mediator) =>
+        {
+            try
+            {
+                var result = await mediator.Send(command);
+                if (!result.IsSuccess)
+                {
+                    return Results.BadRequest(new { error = result.Error });
+                }
+
+                // Return 202 Accepted containing the TransactionId, Status, and Timestamp
+                return Results.Accepted(uri: null, value: result.Value);
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "An error occurred while processing the withdrawal.");
+            }
+        })
+        .RequireAuthorization()
+        .WithName("WithdrawFunds")
+        .Produces<TransferResponseDto>(StatusCodes.Status202Accepted)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .WithOpenApi(operation => new(operation)
+        {
+            Summary = "Withdraw money from a bank account",
+            Description = "Withdraws the specified amount from the source account. Validates active account status and sufficient balance."
+        })
+        .WithTags("Transactions");
+
         return app;
     }
 }
