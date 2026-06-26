@@ -209,5 +209,37 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         errors.Should().NotBeNull();
         errors.Should().ContainKey("AccountNumber");
     }
+
+    [Fact]
+    public async Task GetTransactions_WhenMediatorThrowsUnexpectedException_Returns500InternalServerError()
+    {
+        // Arrange
+        var mockMediator = Substitute.For<IMediator>();
+        mockMediator.Send(Arg.Any<GetAccountTransactionsQuery>(), Arg.Any<CancellationToken>())
+            .Throws(new Exception("Database connection failed."));
+
+        var client = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.AddSingleton(mockMediator);
+            });
+        }).CreateClient();
+
+        var token = TokenGenerator.GenerateToken("test-user");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/accounts/111111/transactions");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+
+        var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("An error occurred while retrieving transactions.");
+        problemDetails.Detail.Should().Be("Database connection failed.");
+        problemDetails.Status.Should().Be(500);
+    }
 }
 
