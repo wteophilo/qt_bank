@@ -8,8 +8,13 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using QtBank.Api.Application.DTOs;
+using System.Linq;
+using System.Threading;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using QtBank.Api.Application.Transactions.Commands;
 using QtBank.Api.Domain.Models;
+using QtBank.Api.Domain.Repositories;
 using QtBank.Api.Infrastructure.Security;
 using Xunit;
 
@@ -196,5 +201,44 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Transfer_WhenExceptionOccurs_Returns500InternalServerError()
+    {
+        // Arrange
+        var client = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                var mockRepo = Substitute.For<IAccountRepository>();
+                mockRepo.GetByNumberAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .Returns(Task.FromException<Account?>(new Exception("Database connection failed")));
+
+                var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IAccountRepository));
+                if (descriptor != null)
+                {
+                    services.Remove(descriptor);
+                }
+
+                services.AddSingleton(mockRepo);
+            });
+        }).CreateClient();
+
+        var token = TokenGenerator.GenerateToken("test-user");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var command = new TransferCommand("111111", "222222", 100m, Currency.USD);
+
+        // Act
+        var response = await client.PostAsJsonAsync("/transactions/transfer", command);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("An error occurred while processing the transfer.");
+        problemDetails.Detail.Should().Be("Database connection failed");
+        problemDetails.Status.Should().Be(500);
     }
 }
