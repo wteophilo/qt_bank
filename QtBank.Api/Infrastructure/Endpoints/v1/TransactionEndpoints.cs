@@ -1,0 +1,60 @@
+using System;
+using MediatR;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using QtBank.Api.Application.Transactions.Commands;
+using QtBank.Api.Application.DTOs;
+using FluentValidation;
+
+namespace QtBank.Api.Infrastructure.Endpoints.v1;
+
+/// <summary>
+/// Exposes endpoints for managing bank transactions.
+/// </summary>
+public static class TransactionEndpoints
+{
+    /// <summary>
+    /// Maps transaction endpoints to the request pipeline.
+    /// </summary>
+    public static IEndpointRouteBuilder MapTransactionEndpoints(this IEndpointRouteBuilder app)
+    {
+        app.MapPost("/transactions/transfer", async (TransferCommand command, IMediator mediator) =>
+        {
+            try
+            {
+                var result = await mediator.Send(command);
+                if (!result.IsSuccess)
+                {
+                    return Results.BadRequest(new { error = result.Error });
+                }
+
+                // Return 202 Accepted containing the TransactionId, Status, and Timestamp
+                return Results.Accepted(uri: null, value: result.Value);
+            }
+            catch (ValidationException)
+            {
+                // This will be caught by the ValidationExceptionMiddleware to return 400 BadRequest with details.
+                throw;
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: 500, title: "An error occurred while processing the transfer.");
+            }
+        })
+        .RequireAuthorization()
+        .WithName("TransferFunds")
+        .Produces<TransferResponseDto>(StatusCodes.Status202Accepted)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .WithOpenApi(operation => new(operation)
+        {
+            Summary = "Initiate a peer-to-peer (P2P) money transfer",
+            Description = "Transfers money from a source account to a destination account. Validates active accounts, sufficient balance, and handles idempotency."
+        })
+        .WithTags("Transactions");
+
+        return app;
+    }
+}

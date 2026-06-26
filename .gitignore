@@ -368,3 +368,6 @@ FodyWeavers.xsd
 
 # Stryker (mutation testing tool)
 StrykerOutput/
+
+# Code coverage reports
+coveragereport/
