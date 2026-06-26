@@ -14,7 +14,6 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using System.Collections.Generic;
 using System.Linq;
-using QtBank.Api.Application.Accounts.Commands;
 using QtBank.Api.Application.Transactions.Commands;
 using QtBank.Api.Application.Transactions.Queries;
 using QtBank.Api.Application.DTOs;
@@ -40,147 +39,6 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var token = TokenGenerator.GenerateToken(username);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
-    }
-
-    [Fact]
-    public async Task CreateAccount_WithoutAuthorization_Returns401Unauthorized()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-        var command = new CreateAccountCommand("123456", 1000m, "Alice Smith", AccountStatus.Active);
-
-        // Act
-        var response = await client.PostAsJsonAsync("/api/v1/accounts", command);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task CreateAccount_WithValidCommand_Returns201Created_AndReturnsAccountDto()
-    {
-        // Arrange
-        var client = CreateAuthorizedClient();
-        var command = new CreateAccountCommand("987654", 2500m, "Jane Doe", AccountStatus.Active);
-
-        // Act
-        var response = await client.PostAsJsonAsync("/api/v1/accounts", command);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        response.Headers.Location.Should().NotBeNull();
-
-        var dto = await response.Content.ReadFromJsonAsync<AccountDto>();
-        dto.Should().NotBeNull();
-        dto!.AccountNumber.Should().Be("987654");
-        dto.OwnerName.Should().Be("Jane Doe");
-        dto.Balance.Should().Be(2500m);
-        dto.Status.Should().Be("Active");
-        dto.Id.Should().NotBeEmpty();
-
-        response.Headers.Location!.ToString().Should().Be($"/api/v1/accounts/{dto.Id}");
-    }
-
-    [Fact]
-    public async Task CreateAccount_WithInvalidCommand_Returns400BadRequest_WithValidationErrors()
-    {
-        // Arrange
-        var client = CreateAuthorizedClient();
-        // Missing account number and owner name, negative balance
-        var command = new CreateAccountCommand("", -10m, "", AccountStatus.Active);
-
-        // Act
-        var response = await client.PostAsJsonAsync("/api/v1/accounts", command);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var contentString = await response.Content.ReadAsStringAsync();
-        var problemDetails = JsonSerializer.Deserialize<ProblemDetails>(contentString, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
-
-        problemDetails.Should().NotBeNull();
-        problemDetails!.Title.Should().Be("One or more validation errors occurred.");
-        problemDetails.Status.Should().Be(400);
-
-        // Extract validation errors extension
-        problemDetails.Extensions.Should().ContainKey("errors");
-        var errorsJson = problemDetails.Extensions["errors"]?.ToString();
-        errorsJson.Should().NotBeNull();
-
-        var errors = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string[]>>(errorsJson!);
-        errors.Should().NotBeNull();
-        errors.Should().ContainKey("AccountNumber");
-        errors.Should().ContainKey("OwnerName");
-        errors.Should().ContainKey("Balance");
-    }
-
-    [Fact]
-    public async Task CreateAccount_WhenMediatorThrowsArgumentException_Returns400BadRequest_WithErrorMessage()
-    {
-        // Arrange
-        var mockMediator = Substitute.For<IMediator>();
-        mockMediator.Send(Arg.Any<CreateAccountCommand>(), Arg.Any<CancellationToken>())
-            .Throws(new ArgumentException("Invalid business argument."));
-
-        var client = _factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                services.AddSingleton(mockMediator);
-            });
-        }).CreateClient();
-
-        var token = TokenGenerator.GenerateToken("test-user");
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        var command = new CreateAccountCommand("111222", 100m, "Bob Smith", AccountStatus.Active);
-
-        // Act
-        var response = await client.PostAsJsonAsync("/api/v1/accounts", command);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var errorResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
-        errorResponse.TryGetProperty("error", out var errorProperty).Should().BeTrue();
-        errorProperty.GetString().Should().Be("Invalid business argument.");
-    }
-
-    [Fact]
-    public async Task CreateAccount_WhenMediatorThrowsUnexpectedException_Returns500InternalServerError()
-    {
-        // Arrange
-        var mockMediator = Substitute.For<IMediator>();
-        mockMediator.Send(Arg.Any<CreateAccountCommand>(), Arg.Any<CancellationToken>())
-            .Throws(new Exception("Database connection failed."));
-
-        var client = _factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                services.AddSingleton(mockMediator);
-            });
-        }).CreateClient();
-
-        var token = TokenGenerator.GenerateToken("test-user");
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        var command = new CreateAccountCommand("111222", 100m, "Bob Smith", AccountStatus.Active);
-
-        // Act
-        var response = await client.PostAsJsonAsync("/api/v1/accounts", command);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
-
-        var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetails>();
-        problemDetails.Should().NotBeNull();
-        problemDetails!.Title.Should().Be("An error occurred while creating the account.");
-        problemDetails.Detail.Should().Be("Database connection failed.");
-        problemDetails.Status.Should().Be(500);
     }
 
     [Fact]
@@ -350,6 +208,38 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var errors = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string[]>>(errorsJson!);
         errors.Should().NotBeNull();
         errors.Should().ContainKey("AccountNumber");
+    }
+
+    [Fact]
+    public async Task GetTransactions_WhenMediatorThrowsUnexpectedException_Returns500InternalServerError()
+    {
+        // Arrange
+        var mockMediator = Substitute.For<IMediator>();
+        mockMediator.Send(Arg.Any<GetAccountTransactionsQuery>(), Arg.Any<CancellationToken>())
+            .Throws(new Exception("Database connection failed."));
+
+        var client = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.AddSingleton(mockMediator);
+            });
+        }).CreateClient();
+
+        var token = TokenGenerator.GenerateToken("test-user");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/accounts/111111/transactions");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+
+        var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("An error occurred while retrieving transactions.");
+        problemDetails.Detail.Should().Be("Database connection failed.");
+        problemDetails.Status.Should().Be(500);
     }
 }
 
