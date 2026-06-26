@@ -22,6 +22,10 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
     - name: Run Unit Tests
-      run: dotnet test --no-build --verbosity normal --filter "FullyQualifiedName!~IntegrationTests"
+      run: dotnet test --no-build --verbosity normal --filter "FullyQualifiedName!~IntegrationTests" --collect:"XPlat Code Coverage"
     - name: Run Integration Tests
-      run: dotnet test --no-build --verbosity normal --filter "FullyQualifiedName~IntegrationTests"
+      run: dotnet test --no-build --verbosity normal --filter "FullyQualifiedName~IntegrationTests" --collect:"XPlat Code Coverage"
+    - name: Install ReportGenerator
+      run: dotnet tool install --global dotnet-reportgenerator-globaltool
+    - name: Enforce Code Coverage Threshold (80%)
+      run: ~/.dotnet/tools/reportgenerator -reports:"**/TestResults/**/*.xml" -targetdir:"coveragereport" -reporttypes:HtmlSummary minimumCoverageThresholds:lineCoverage=80
