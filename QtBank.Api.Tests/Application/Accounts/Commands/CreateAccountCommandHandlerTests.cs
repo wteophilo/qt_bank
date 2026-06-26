@@ -33,7 +33,7 @@ public class CreateAccountCommandHandlerTests
     {
         // Arrange
         var command = new CreateAccountCommand(" 12345-6 ", 1500.75m, " John Doe ", AccountStatus.Active);
-        
+
         // Configure repository stub to return the account it receives
         _repository.SaveAsync(Arg.Any<Account>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => callInfo.Arg<Account>());
@@ -52,19 +52,19 @@ public class CreateAccountCommandHandlerTests
 
         // Verify repository saved the exact details
         await _repository.Received(1).SaveAsync(
-            Arg.Is<Account>(a => 
+            Arg.Is<Account>(a =>
                 a.AccountNumber == "12345-6" &&
                 a.OwnerName == "John Doe" &&
                 a.Balance == 1500.75m &&
                 a.Status == AccountStatus.Active
-            ), 
+            ),
             Arg.Any<CancellationToken>()
         );
 
         // Verify event was published correctly
         await _publisher.Received(1).PublishAsync(
             "accounts-topic",
-            Arg.Is<AccountCreated>(e => 
+            Arg.Is<AccountCreated>(e =>
                 e.AccountId == result.Id &&
                 e.AccountNumber == "12345-6" &&
                 e.Balance == 1500.75m &&

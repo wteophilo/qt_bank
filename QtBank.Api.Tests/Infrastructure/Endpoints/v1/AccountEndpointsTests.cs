@@ -65,7 +65,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         response.Headers.Location.Should().NotBeNull();
-        
+
         var dto = await response.Content.ReadFromJsonAsync<AccountDto>();
         dto.Should().NotBeNull();
         dto!.AccountNumber.Should().Be("987654");
@@ -100,7 +100,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         problemDetails.Should().NotBeNull();
         problemDetails!.Title.Should().Be("One or more validation errors occurred.");
         problemDetails.Status.Should().Be(400);
-        
+
         // Extract validation errors extension
         problemDetails.Extensions.Should().ContainKey("errors");
         var errorsJson = problemDetails.Extensions["errors"]?.ToString();
@@ -128,7 +128,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
                 services.AddSingleton(mockMediator);
             });
         }).CreateClient();
-        
+
         var token = TokenGenerator.GenerateToken("test-user");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -139,7 +139,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        
+
         var errorResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
         errorResponse.TryGetProperty("error", out var errorProperty).Should().BeTrue();
         errorProperty.GetString().Should().Be("Invalid business argument.");
@@ -178,4 +178,87 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         problemDetails.Detail.Should().Be("Database connection failed.");
         problemDetails.Status.Should().Be(500);
     }
+
+    [Fact]
+    public async Task GetAccountBalance_WithoutAuthorization_Returns401Unauthorized()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/accounts/111111/balance");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task GetAccountBalance_WithValidAccountNumber_Returns200OK_AndReturnsAccountBalanceDto()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var accountNumber = "111111";
+
+        // Act
+        var response = await client.GetAsync($"/accounts/{accountNumber}/balance");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var dto = await response.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        dto.Should().NotBeNull();
+        dto!.AccountNumber.Should().Be(accountNumber);
+        dto.Balance.Should().Be(5000.00m);
+    }
+
+    [Fact]
+    public async Task GetAccountBalance_WithNonExistentAccountNumber_Returns404NotFound()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var accountNumber = "999999";
+
+        // Act
+        var response = await client.GetAsync($"/accounts/{accountNumber}/balance");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var errorResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
+        errorResponse.TryGetProperty("error", out var errorProperty).Should().BeTrue();
+        errorProperty.GetString().Should().Be($"Account with number '{accountNumber}' not found.");
+    }
+
+    [Fact]
+    public async Task GetAccountBalance_WithInvalidAccountNumber_Returns400BadRequest_WithValidationErrors()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var accountNumber = "   "; // Whitespace
+
+        // Act
+        var response = await client.GetAsync($"/accounts/{Uri.EscapeDataString(accountNumber)}/balance");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var contentString = await response.Content.ReadAsStringAsync();
+        var problemDetails = JsonSerializer.Deserialize<ProblemDetails>(contentString, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("One or more validation errors occurred.");
+        problemDetails.Status.Should().Be(400);
+
+        problemDetails.Extensions.Should().ContainKey("errors");
+        var errorsJson = problemDetails.Extensions["errors"]?.ToString();
+        errorsJson.Should().NotBeNull();
+
+        var errors = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string[]>>(errorsJson!);
+        errors.Should().NotBeNull();
+        errors.Should().ContainKey("AccountNumber");
+    }
 }
+

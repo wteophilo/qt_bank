@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using QtBank.Api.Application.Accounts.Commands;
+using QtBank.Api.Application.Accounts.Queries;
 using QtBank.Api.Application.DTOs;
 using QtBank.Api.Domain.Models;
 using QtBank.Api.Infrastructure.Security;
@@ -46,6 +47,28 @@ public static class AccountEndpoints
         {
             Summary = "Create a new bank account",
             Description = "Creates a new bank account with the specified account number, initial balance, owner name, and status, and publishes an AccountCreated integration event."
+        })
+        .WithTags("Accounts");
+
+        app.MapGet("/accounts/{accountNumber}/balance", async (string accountNumber, IMediator mediator) =>
+        {
+            var response = await mediator.Send(new GetAccountBalanceQuery(accountNumber));
+            if (response == null)
+            {
+                return Results.NotFound(new { error = $"Account with number '{accountNumber}' not found." });
+            }
+            return Results.Ok(response);
+        })
+        .RequireAuthorization()
+        .WithName("GetAccountBalance")
+        .Produces<AccountBalanceDto>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .WithOpenApi(operation => new(operation)
+        {
+            Summary = "Get the balance of a bank account",
+            Description = "Retrieves the balance of the bank account corresponding to the specified account number."
         })
         .WithTags("Accounts");
 
