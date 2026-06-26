@@ -29,4 +29,19 @@ public class InMemoryTransactionRepository : ITransactionRepository
         _byIdempotencyKey.TryGetValue(idempotencyKey, out var transaction);
         return Task.FromResult(transaction);
     }
+
+    /// <inheritdoc />
+    public Task<IEnumerable<Transaction>> GetByAccountNumberAsync(string accountNumber, CancellationToken cancellationToken = default)
+    {
+        var result = new System.Collections.Generic.List<Transaction>();
+        foreach (var tx in _transactions.Values)
+        {
+            if (tx.SourceAccountNumber.Equals(accountNumber, System.StringComparison.OrdinalIgnoreCase) ||
+                tx.DestinationAccountNumber.Equals(accountNumber, System.StringComparison.OrdinalIgnoreCase))
+            {
+                result.Add(tx);
+            }
+        }
+        return Task.FromResult<System.Collections.Generic.IEnumerable<Transaction>>(result);
+    }
 }

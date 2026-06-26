@@ -12,7 +12,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using System.Collections.Generic;
+using System.Linq;
 using QtBank.Api.Application.Accounts.Commands;
+using QtBank.Api.Application.Transactions.Commands;
+using QtBank.Api.Application.Transactions.Queries;
 using QtBank.Api.Application.DTOs;
 using QtBank.Api.Domain.Models;
 using QtBank.Api.Infrastructure.Security;
@@ -238,6 +242,90 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
 
         // Act
         var response = await client.GetAsync($"/api/v1/accounts/{Uri.EscapeDataString(accountNumber)}/balance");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var contentString = await response.Content.ReadAsStringAsync();
+        var problemDetails = JsonSerializer.Deserialize<ProblemDetails>(contentString, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("One or more validation errors occurred.");
+        problemDetails.Status.Should().Be(400);
+
+        problemDetails.Extensions.Should().ContainKey("errors");
+        var errorsJson = problemDetails.Extensions["errors"]?.ToString();
+        errorsJson.Should().NotBeNull();
+
+        var errors = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string[]>>(errorsJson!);
+        errors.Should().NotBeNull();
+        errors.Should().ContainKey("AccountNumber");
+    }
+
+    [Fact]
+    public async Task GetTransactions_WithoutAuthorization_Returns401Unauthorized()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/api/v1/accounts/111111/transactions");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task GetTransactions_WithValidAccountNumber_Returns200OK_AndReturnsTransactionsList()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var accountNumber = "111111";
+
+        // Let's execute a transfer first to ensure there's at least one transaction
+        var command = new TransferCommand(accountNumber, "222222", 50m, Currency.USD);
+        await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/accounts/{accountNumber}/transactions");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var list = await response.Content.ReadFromJsonAsync<IEnumerable<TransactionDto>>();
+        list.Should().NotBeNull();
+        list.Should().NotBeEmpty();
+        list!.Any(t => t.SourceAccountNumber == accountNumber || t.DestinationAccountNumber == accountNumber).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetTransactions_WithNonExistentAccountNumber_Returns404NotFound()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var accountNumber = "999999";
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/accounts/{accountNumber}/transactions");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var errorResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
+        errorResponse.TryGetProperty("error", out var errorProperty).Should().BeTrue();
+        errorProperty.GetString().Should().Be($"Account with number '{accountNumber}' not found.");
+    }
+
+    [Fact]
+    public async Task GetTransactions_WithInvalidAccountNumber_Returns400BadRequest_WithValidationErrors()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var accountNumber = "   "; // Whitespace
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/accounts/{Uri.EscapeDataString(accountNumber)}/transactions");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
