@@ -5,7 +5,7 @@ namespace QtBank.Api.Domain.Models;
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum TransactionStatus
 {
-    Pending,
+    Processing,
     Completed,
     Failed
 }

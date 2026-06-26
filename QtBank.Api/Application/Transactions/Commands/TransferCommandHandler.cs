@@ -100,7 +100,7 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
             Amount = request.Amount,
             Currency = request.Currency.ToUpperInvariant(),
             IdempotencyKey = Guid.NewGuid(),
-            Status = TransactionStatus.Pending,
+            Status = TransactionStatus.Processing,
             CreatedAt = DateTime.UtcNow
         };
 

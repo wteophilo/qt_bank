@@ -75,7 +75,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var transferResult = await response.Content.ReadFromJsonAsync<TransferResponseDto>();
         transferResult.Should().NotBeNull();
         transferResult!.TransactionId.Should().NotBeEmpty();
-        transferResult.Status.Should().Be("Pending");
+        transferResult.Status.Should().Be("Processing");
         transferResult.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
 
         // Act - Verify Balances Updated (Alice: -100m; Bob: +100m)

@@ -40,7 +40,7 @@ public class Transaction
     /// <summary>
     /// Current processing status of the transaction.
     /// </summary>
-    public TransactionStatus Status { get; set; } = TransactionStatus.Pending;
+    public TransactionStatus Status { get; set; } = TransactionStatus.Processing;
 
     /// <summary>
     /// The timestamp when the transaction was created.
