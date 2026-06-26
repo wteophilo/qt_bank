@@ -19,4 +19,9 @@ public interface ITransactionRepository
     /// Gets a transaction by its idempotency key.
     /// </summary>
     Task<Transaction?> GetByIdempotencyKeyAsync(Guid idempotencyKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all transactions associated with an account number (either as source or destination).
+    /// </summary>
+    Task<IEnumerable<Transaction>> GetByAccountNumberAsync(string accountNumber, CancellationToken cancellationToken = default);
 }
