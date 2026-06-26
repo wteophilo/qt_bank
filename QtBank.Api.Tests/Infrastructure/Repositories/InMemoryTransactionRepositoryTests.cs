@@ -27,6 +27,7 @@ public class InMemoryTransactionRepositoryTests
             DestinationAccountNumber = "222222",
             Amount = 150.00m,
             Currency = Currency.USD,
+            Type = TransactionType.Deposit,
             IdempotencyKey = Guid.NewGuid(),
             Status = TransactionStatus.Processing,
             CreatedAt = DateTime.UtcNow
@@ -66,6 +67,7 @@ public class InMemoryTransactionRepositoryTests
             DestinationAccountNumber = "222222",
             Amount = 150.00m,
             Currency = Currency.USD,
+            Type = TransactionType.Withdrawal,
             IdempotencyKey = Guid.NewGuid(),
             Status = TransactionStatus.Processing,
             CreatedAt = DateTime.UtcNow

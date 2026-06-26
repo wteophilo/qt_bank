@@ -99,6 +99,7 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
             DestinationAccountNumber = request.DestinationAccountNumber,
             Amount = request.Amount,
             Currency = request.Currency,
+            Type = TransactionType.Transfer,
             IdempotencyKey = Guid.NewGuid(),
             Status = TransactionStatus.Processing,
             CreatedAt = DateTime.UtcNow

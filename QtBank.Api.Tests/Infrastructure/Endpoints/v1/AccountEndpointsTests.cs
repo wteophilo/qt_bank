@@ -298,6 +298,9 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         list.Should().NotBeNull();
         list.Should().NotBeEmpty();
         list!.Any(t => t.SourceAccountNumber == accountNumber || t.DestinationAccountNumber == accountNumber).Should().BeTrue();
+        
+        var tx = list!.First(t => t.SourceAccountNumber == accountNumber);
+        tx.Type.Should().Be("Transfer");
     }
 
     [Fact]

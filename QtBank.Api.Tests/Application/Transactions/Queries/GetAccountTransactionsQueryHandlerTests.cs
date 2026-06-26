@@ -64,6 +64,7 @@ public class GetAccountTransactionsQueryHandlerTests
                 DestinationAccountNumber = "222222",
                 Amount = 100m,
                 Currency = Currency.USD,
+                Type = TransactionType.Transfer,
                 IdempotencyKey = Guid.NewGuid(),
                 Status = TransactionStatus.Completed,
                 CreatedAt = DateTime.UtcNow
@@ -75,6 +76,7 @@ public class GetAccountTransactionsQueryHandlerTests
                 DestinationAccountNumber = accountNumber,
                 Amount = 250m,
                 Currency = Currency.BRL,
+                Type = TransactionType.Deposit,
                 IdempotencyKey = Guid.NewGuid(),
                 Status = TransactionStatus.Processing,
                 CreatedAt = DateTime.UtcNow
@@ -98,12 +100,14 @@ public class GetAccountTransactionsQueryHandlerTests
         resultList[0].DestinationAccountNumber.Should().Be("222222");
         resultList[0].Amount.Should().Be(100m);
         resultList[0].Currency.Should().Be("USD");
+        resultList[0].Type.Should().Be("Transfer");
         resultList[0].Status.Should().Be("Completed");
 
         resultList[1].SourceAccountNumber.Should().Be("333333");
         resultList[1].DestinationAccountNumber.Should().Be(accountNumber);
         resultList[1].Amount.Should().Be(250m);
         resultList[1].Currency.Should().Be("BRL");
+        resultList[1].Type.Should().Be("Deposit");
         resultList[1].Status.Should().Be("Processing");
 
         await _accountRepository.Received(1).GetByNumberAsync(accountNumber, Arg.Any<CancellationToken>());

@@ -33,6 +33,11 @@ public class Transaction
     public Currency Currency { get; set; }
 
     /// <summary>
+    /// Type of the transaction (Transfer, Deposit, Withdrawal).
+    /// </summary>
+    public TransactionType Type { get; set; }
+
+    /// <summary>
     /// Idempotency key used to prevent duplicate operations.
     /// </summary>
     public Guid IdempotencyKey { get; set; }
