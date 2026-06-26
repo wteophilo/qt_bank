@@ -24,6 +24,7 @@ public class TransferValidator : AbstractValidator<TransferCommand>
             .GreaterThan(0).WithMessage("Amount must be greater than zero.");
 
         RuleFor(x => x.Currency)
-            .IsInEnum().WithMessage("Currency must be one of the supported types: BRL, USD, EUR, CAD.");
+            .IsInEnum()
+            .WithMessage(x => $"Currency must be one of the supported types: {string.Join(", ", Enum.GetNames<Currency>())}.");
     }
 }

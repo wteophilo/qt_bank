@@ -241,4 +241,175 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         problemDetails.Detail.Should().Be("Database connection failed");
         problemDetails.Status.Should().Be(500);
     }
+
+    [Fact]
+    public async Task Deposit_WithoutAuthorization_Returns401Unauthorized()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var command = new DepositCommand("111111", 100m, Currency.USD);
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Deposit_WithValidPayload_Returns202Accepted_AndUpdatesBalance()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var command = new DepositCommand("111111", 200m, Currency.USD);
+
+        // Get initial balance
+        var aliceBeforeResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var aliceBefore = await aliceBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceInitial = aliceBefore!.Balance;
+
+        // Act - Execute Deposit
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
+
+        // Assert Endpoint Response
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var depositResult = await response.Content.ReadFromJsonAsync<TransferResponseDto>();
+        depositResult.Should().NotBeNull();
+        depositResult!.TransactionId.Should().NotBeEmpty();
+        depositResult.Status.Should().Be("Processing");
+        depositResult.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+
+        // Act - Verify Balance Updated (Alice: +200m)
+        var aliceBalanceResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var aliceBalance = await aliceBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        aliceBalance.Should().NotBeNull();
+        aliceBalance!.Balance.Should().Be(aliceInitial + 200m);
+    }
+
+    [Fact]
+    public async Task Deposit_WithInvalidPayload_Returns400BadRequest_WithValidationErrors()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        // Negative amount, invalid currency
+        var command = new DepositCommand("111111", -50m, (Currency)999);
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var contentString = await response.Content.ReadAsStringAsync();
+        var problemDetails = JsonSerializer.Deserialize<ProblemDetails>(contentString, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("One or more validation errors occurred.");
+        problemDetails.Status.Should().Be(400);
+
+        problemDetails.Extensions.Should().ContainKey("errors");
+        var errorsJson = problemDetails.Extensions["errors"]?.ToString();
+        errorsJson.Should().NotBeNull();
+
+        var errors = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string[]>>(errorsJson!);
+        errors.Should().NotBeNull();
+        errors.Should().ContainKey("Amount");
+        errors.Should().ContainKey("Currency");
+    }
+
+    [Fact]
+    public async Task Deposit_WhenAccountNotFound_Returns400BadRequest_WithBusinessError()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var command = new DepositCommand("999999", 50m, Currency.USD);
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var errorResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
+        errorResponse.TryGetProperty("error", out var errorProperty).Should().BeTrue();
+        errorProperty.GetString().Should().Be("Account not found.");
+    }
+
+    [Fact]
+    public async Task Deposit_WhenAccountInactive_Returns400BadRequest_WithBusinessError()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var command = new DepositCommand("333333", 10m, Currency.USD);
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var errorResponse = await response.Content.ReadFromJsonAsync<JsonElement>();
+        errorResponse.TryGetProperty("error", out var errorProperty).Should().BeTrue();
+        errorProperty.GetString().Should().Be("Account is not active.");
+    }
+
+    [Fact]
+    public async Task Deposit_WithInvalidCurrencyString_Returns400BadRequest()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var rawPayload = new
+        {
+            AccountNumber = "111111",
+            Amount = 100m,
+            Currency = "KHR" // Invalid string for Currency enum
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", rawPayload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Deposit_WhenExceptionOccurs_Returns500InternalServerError()
+    {
+        // Arrange
+        var client = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                var mockRepo = Substitute.For<IAccountRepository>();
+                mockRepo.GetByNumberAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .Returns(Task.FromException<Account?>(new Exception("Database connection failed")));
+
+                var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IAccountRepository));
+                if (descriptor != null)
+                {
+                    services.Remove(descriptor);
+                }
+
+                services.AddSingleton(mockRepo);
+            });
+        }).CreateClient();
+
+        var token = TokenGenerator.GenerateToken("test-user");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var command = new DepositCommand("111111", 100m, Currency.USD);
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("An error occurred while processing the deposit.");
+        problemDetails.Detail.Should().Be("Database connection failed");
+        problemDetails.Status.Should().Be(500);
+    }
 }
+

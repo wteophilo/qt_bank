@@ -1,0 +1,95 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using MediatR;
+using Microsoft.Extensions.Logging;
+using QtBank.Api.Application.Common;
+using QtBank.Api.Application.DTOs;
+using QtBank.Api.Domain.Events;
+using QtBank.Api.Domain.Models;
+using QtBank.Api.Domain.Repositories;
+using QtBank.Api.Infrastructure.Messaging;
+
+namespace QtBank.Api.Application.Transactions.Commands;
+
+/// <summary>
+/// Command handler for processing account deposit requests.
+/// </summary>
+public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<TransferResponseDto>>
+{
+    private readonly IAccountRepository _accountRepository;
+    private readonly ITransactionRepository _transactionRepository;
+    private readonly IPubSubPublisher _publisher;
+    private readonly ILogger<DepositCommandHandler> _logger;
+
+    public DepositCommandHandler(
+        IAccountRepository accountRepository,
+        ITransactionRepository transactionRepository,
+        IPubSubPublisher publisher,
+        ILogger<DepositCommandHandler> logger)
+    {
+        _accountRepository = accountRepository;
+        _transactionRepository = transactionRepository;
+        _publisher = publisher;
+        _logger = logger;
+    }
+
+    public async Task<Result<TransferResponseDto>> Handle(DepositCommand request, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Processing DepositCommand for account {AccountNumber}", request.AccountNumber);
+
+        // 1. Fetch Account
+        var account = await _accountRepository.GetByNumberAsync(request.AccountNumber, cancellationToken);
+        if (account is null)
+        {
+            _logger.LogError("Deposit failed: Account not found. {Account}", request.AccountNumber);
+            return Result<TransferResponseDto>.Fail("Account not found.");
+        }
+
+        // 2. Validate active status
+        if (!account.IsActive())
+        {
+            _logger.LogError("Deposit failed: Account is not active. {Account}", request.AccountNumber);
+            return Result<TransferResponseDto>.Fail("Account is not active.");
+        }
+
+        // 3. Update Balance
+        account.Balance += request.Amount;
+        await _accountRepository.SaveAsync(account, cancellationToken);
+
+        // 4. Create & Persist Transaction
+        var transaction = new Transaction
+        {
+            Id = Guid.NewGuid(),
+            SourceAccountNumber = string.Empty,
+            DestinationAccountNumber = request.AccountNumber,
+            Amount = request.Amount,
+            Currency = request.Currency,
+            Type = TransactionType.Deposit,
+            IdempotencyKey = Guid.NewGuid(),
+            Status = TransactionStatus.Processing,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var savedTx = await _transactionRepository.SaveAsync(transaction, cancellationToken);
+
+        // 5. Publish integration event
+        await PublishDepositCompletedEventAsync(savedTx, cancellationToken);
+
+        return Result<TransferResponseDto>.Ok(new TransferResponseDto(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
+    }
+
+    private async Task PublishDepositCompletedEventAsync(Transaction tx, CancellationToken cancellationToken)
+    {
+        var ev = new DepositCompleted(
+            tx.Id,
+            tx.DestinationAccountNumber,
+            tx.Amount,
+            tx.Currency.ToString(),
+            tx.IdempotencyKey,
+            tx.Status.ToString(),
+            tx.CreatedAt
+        );
+        await _publisher.PublishAsync("deposits-topic", ev, cancellationToken);
+    }
+}
