@@ -83,6 +83,7 @@ builder.Services.AddMediatR(cfg =>
 
 // Register Domain and Infrastructure dependencies
 builder.Services.AddSingleton<IAccountRepository, InMemoryAccountRepository>();
+builder.Services.AddSingleton<ITransactionRepository, InMemoryTransactionRepository>();
 builder.Services.AddSingleton<IPubSubPublisher, InMemoryPubSubPublisher>();
 
 // Configure JWT Authentication
@@ -161,6 +162,7 @@ app.UseAuthorization();
 
 app.MapTokenEndpoints();
 app.MapAccountEndpoints();
+app.MapTransactionEndpoints();
 
 app.Run();
 
