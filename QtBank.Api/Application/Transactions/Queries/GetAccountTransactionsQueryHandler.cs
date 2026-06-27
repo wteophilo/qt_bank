@@ -13,7 +13,7 @@ namespace QtBank.Api.Application.Transactions.Queries;
 /// <summary>
 /// Query handler for retrieving all transactions of a bank account.
 /// </summary>
-public class GetAccountTransactionsQueryHandler : IRequestHandler<GetAccountTransactionsQuery, IEnumerable<TransactionDto>?>
+public class GetAccountTransactionsQueryHandler : IRequestHandler<GetAccountTransactionsQuery, IEnumerable<TransactionResponse>?>
 {
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
@@ -29,7 +29,7 @@ public class GetAccountTransactionsQueryHandler : IRequestHandler<GetAccountTran
         _logger = logger;
     }
 
-    public async Task<IEnumerable<TransactionDto>?> Handle(GetAccountTransactionsQuery request, CancellationToken cancellationToken)
+    public async Task<IEnumerable<TransactionResponse>?> Handle(GetAccountTransactionsQuery request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Retrieving transactions for account number: {AccountNumber}", request.AccountNumber);
 
@@ -42,7 +42,7 @@ public class GetAccountTransactionsQueryHandler : IRequestHandler<GetAccountTran
 
         var transactions = await _transactionRepository.GetByAccountNumberAsync(request.AccountNumber, cancellationToken);
 
-        return transactions.Select(t => new TransactionDto(
+        return transactions.Select(t => new TransactionResponse(
             t.Id,
             t.SourceAccountNumber,
             t.DestinationAccountNumber,

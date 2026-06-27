@@ -15,7 +15,7 @@ namespace QtBank.Api.Application.Transactions.Commands;
 /// <summary>
 /// Command handler for processing P2P money transfer requests.
 /// </summary>
-public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<TransferResponseDto>>
+public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<TransferResponse>>
 {
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
@@ -34,7 +34,7 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
         _logger = logger;
     }
 
-    public async Task<Result<TransferResponseDto>> Handle(TransferCommand request, CancellationToken cancellationToken)
+    public async Task<Result<TransferResponse>> Handle(TransferCommand request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Processing TransferCommand from {Source} to {Dest}", request.SourceAccountNumber, request.DestinationAccountNumber);
 
@@ -43,7 +43,7 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
         if (existingTx is not null)
         {
             _logger.LogInformation("Transfer already processed for idempotency key {Key}", request.IdempotencyKey);
-            return Result<TransferResponseDto>.Ok(new TransferResponseDto(existingTx.Id, existingTx.Status.ToString(), existingTx.CreatedAt));
+            return Result<TransferResponse>.Ok(new TransferResponse(existingTx.Id, existingTx.Status.ToString(), existingTx.CreatedAt));
         }
 
         // 1. Fetch Accounts
@@ -60,33 +60,33 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
         // 4. Publish Event
         await PublishTransferCompletedEventAsync(savedTx, cancellationToken);
 
-        return Result<TransferResponseDto>.Ok(new TransferResponseDto(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
+        return Result<TransferResponse>.Ok(new TransferResponse(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
     }
 
-    private Result<TransferResponseDto>? ValidateTransferRules(Account? source, Account? destination, TransferCommand request)
+    private Result<TransferResponse>? ValidateTransferRules(Account? source, Account? destination, TransferCommand request)
     {
         if (source is null)
         {
             _logger.LogError("Transfer failed: Source account not found. {Account}", request.SourceAccountNumber);
-            return Result<TransferResponseDto>.Fail("Source account not found.");
+            return Result<TransferResponse>.Fail("Source account not found.");
         }
 
         if (destination is null)
         {
             _logger.LogError("Transfer failed: Destination account not found. {Account}", request.DestinationAccountNumber);
-            return Result<TransferResponseDto>.Fail("Destination account not found.");
+            return Result<TransferResponse>.Fail("Destination account not found.");
         }
 
         if (!source.IsActive())
-            return Result<TransferResponseDto>.Fail("Source account is not active.");
+            return Result<TransferResponse>.Fail("Source account is not active.");
 
         if (!destination.IsActive())
-            return Result<TransferResponseDto>.Fail("Destination account is not active.");
+            return Result<TransferResponse>.Fail("Destination account is not active.");
 
         if (!source.CanDebit(request.Amount))
         {
             _logger.LogError("Transfer failed: Insufficient funds in {Account}.", request.SourceAccountNumber);
-            return Result<TransferResponseDto>.Fail("Insufficient funds in source account.");
+            return Result<TransferResponse>.Fail("Insufficient funds in source account.");
         }
 
         return null;

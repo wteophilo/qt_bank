@@ -66,11 +66,11 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Get initial balances
         var aliceBeforeResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var aliceBefore = await aliceBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceBefore = await aliceBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         var aliceInitial = aliceBefore!.Balance;
 
         var bobBeforeResponse = await client.GetAsync("/api/v1/accounts/222222/balance");
-        var bobBefore = await bobBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var bobBefore = await bobBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         var bobInitial = bobBefore!.Balance;
 
         // Act - Execute Transfer
@@ -78,7 +78,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Assert Endpoint Response
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var transferResult = await response.Content.ReadFromJsonAsync<TransferResponseDto>();
+        var transferResult = await response.Content.ReadFromJsonAsync<TransferResponse>();
         transferResult.Should().NotBeNull();
         transferResult!.TransactionId.Should().NotBeEmpty();
         transferResult.Status.Should().Be("Processing");
@@ -86,12 +86,12 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Act - Verify Balances Updated (Alice: -100m; Bob: +100m)
         var aliceBalanceResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var aliceBalance = await aliceBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceBalance = await aliceBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         aliceBalance.Should().NotBeNull();
         aliceBalance!.Balance.Should().Be(aliceInitial - 100m);
 
         var bobBalanceResponse = await client.GetAsync("/api/v1/accounts/222222/balance");
-        var bobBalance = await bobBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var bobBalance = await bobBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         bobBalance.Should().NotBeNull();
         bobBalance!.Balance.Should().Be(bobInitial + 100m);
     }
@@ -265,7 +265,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Get initial balance
         var aliceBeforeResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var aliceBefore = await aliceBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceBefore = await aliceBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         var aliceInitial = aliceBefore!.Balance;
 
         // Act - Execute Deposit
@@ -273,7 +273,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Assert Endpoint Response
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var depositResult = await response.Content.ReadFromJsonAsync<TransferResponseDto>();
+        var depositResult = await response.Content.ReadFromJsonAsync<TransferResponse>();
         depositResult.Should().NotBeNull();
         depositResult!.TransactionId.Should().NotBeEmpty();
         depositResult.Status.Should().Be("Processing");
@@ -281,7 +281,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Act - Verify Balance Updated (Alice: +200m)
         var aliceBalanceResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var aliceBalance = await aliceBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceBalance = await aliceBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         aliceBalance.Should().NotBeNull();
         aliceBalance!.Balance.Should().Be(aliceInitial + 200m);
     }
@@ -435,7 +435,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Get initial balance
         var aliceBeforeResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var aliceBefore = await aliceBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceBefore = await aliceBeforeResponse.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         var aliceInitial = aliceBefore!.Balance;
 
         // Act - Execute Withdrawal
@@ -443,7 +443,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Assert Endpoint Response
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var withdrawalResult = await response.Content.ReadFromJsonAsync<TransferResponseDto>();
+        var withdrawalResult = await response.Content.ReadFromJsonAsync<TransferResponse>();
         withdrawalResult.Should().NotBeNull();
         withdrawalResult!.TransactionId.Should().NotBeEmpty();
         withdrawalResult.Status.Should().Be("Processing");
@@ -451,7 +451,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Act - Verify Balance Updated (Alice: -200m)
         var aliceBalanceResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var aliceBalance = await aliceBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceBalance = await aliceBalanceResponse.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         aliceBalance.Should().NotBeNull();
         aliceBalance!.Balance.Should().Be(aliceInitial - 200m);
     }
@@ -728,24 +728,24 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Get initial balance
         var balanceResponseBefore = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var beforeDto = await balanceResponseBefore.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var beforeDto = await balanceResponseBefore.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         var initialBalance = beforeDto!.Balance;
 
         // Act - First request
         var firstResponse = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var firstResult = await firstResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        var firstResult = await firstResponse.Content.ReadFromJsonAsync<TransferResponse>();
         firstResult.Should().NotBeNull();
 
         // Get balance after first deposit
         var balanceResponseMiddle = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var middleDto = await balanceResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var middleDto = await balanceResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         middleDto!.Balance.Should().Be(initialBalance + 150m);
 
         // Act - Second request with the same idempotency key
         var secondResponse = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
         secondResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var secondResult = await secondResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        var secondResult = await secondResponse.Content.ReadFromJsonAsync<TransferResponse>();
         secondResult.Should().NotBeNull();
 
         // Assert that the returned transaction ID and status are the same as the first request
@@ -753,7 +753,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Verify balance did not change again (remains initial + 150m)
         var balanceResponseAfter = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var afterDto = await balanceResponseAfter.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var afterDto = await balanceResponseAfter.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         afterDto!.Balance.Should().Be(initialBalance + 150m);
     }
 
@@ -767,24 +767,24 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Get initial balance
         var balanceResponseBefore = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var beforeDto = await balanceResponseBefore.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var beforeDto = await balanceResponseBefore.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         var initialBalance = beforeDto!.Balance;
 
         // Act - First request
         var firstResponse = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", command);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var firstResult = await firstResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        var firstResult = await firstResponse.Content.ReadFromJsonAsync<TransferResponse>();
         firstResult.Should().NotBeNull();
 
         // Get balance after first withdrawal
         var balanceResponseMiddle = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var middleDto = await balanceResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var middleDto = await balanceResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         middleDto!.Balance.Should().Be(initialBalance - 150m);
 
         // Act - Second request with the same idempotency key
         var secondResponse = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", command);
         secondResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var secondResult = await secondResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        var secondResult = await secondResponse.Content.ReadFromJsonAsync<TransferResponse>();
         secondResult.Should().NotBeNull();
 
         // Assert that the returned transaction ID and status are the same as the first request
@@ -792,7 +792,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Verify balance did not change again (remains initial - 150m)
         var balanceResponseAfter = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var afterDto = await balanceResponseAfter.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var afterDto = await balanceResponseAfter.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         afterDto!.Balance.Should().Be(initialBalance - 150m);
     }
 
@@ -806,32 +806,32 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Get initial balances
         var aliceResponseBefore = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var aliceBefore = await aliceResponseBefore.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceBefore = await aliceResponseBefore.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         var aliceInitial = aliceBefore!.Balance;
 
         var bobResponseBefore = await client.GetAsync("/api/v1/accounts/222222/balance");
-        var bobBefore = await bobResponseBefore.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var bobBefore = await bobResponseBefore.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         var bobInitial = bobBefore!.Balance;
 
         // Act - First request
         var firstResponse = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var firstResult = await firstResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        var firstResult = await firstResponse.Content.ReadFromJsonAsync<TransferResponse>();
         firstResult.Should().NotBeNull();
 
         // Get middle balances
         var aliceResponseMiddle = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var aliceMiddle = await aliceResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceMiddle = await aliceResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         aliceMiddle!.Balance.Should().Be(aliceInitial - 150m);
 
         var bobResponseMiddle = await client.GetAsync("/api/v1/accounts/222222/balance");
-        var bobMiddle = await bobResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var bobMiddle = await bobResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         bobMiddle!.Balance.Should().Be(bobInitial + 150m);
 
         // Act - Second request with the same idempotency key
         var secondResponse = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
         secondResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var secondResult = await secondResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        var secondResult = await secondResponse.Content.ReadFromJsonAsync<TransferResponse>();
         secondResult.Should().NotBeNull();
 
         // Assert that the returned transaction ID and status are the same as the first request
@@ -839,11 +839,11 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
 
         // Verify balances did not change again
         var aliceResponseAfter = await client.GetAsync("/api/v1/accounts/111111/balance");
-        var aliceAfter = await aliceResponseAfter.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceAfter = await aliceResponseAfter.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         aliceAfter!.Balance.Should().Be(aliceInitial - 150m);
 
         var bobResponseAfter = await client.GetAsync("/api/v1/accounts/222222/balance");
-        var bobAfter = await bobResponseAfter.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var bobAfter = await bobResponseAfter.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         bobAfter!.Balance.Should().Be(bobInitial + 150m);
     }
 }

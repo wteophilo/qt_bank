@@ -55,11 +55,22 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
     }
 
     [Fact]
-    public async Task GetAccountBalance_WithValidAccountNumber_Returns200OK_AndReturnsAccountBalanceDto()
+    public async Task GetAccountBalance_WithValidAccountNumber_Returns200OK_AndReturnsAccountBalanceResponse()
     {
         // Arrange
         var client = CreateAuthorizedClient();
         var accountNumber = "111111";
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var repo = scope.ServiceProvider.GetRequiredService<QtBank.Api.Domain.Repositories.IAccountRepository>();
+            var account = await repo.GetByNumberAsync(accountNumber, CancellationToken.None);
+            if (account is not null)
+            {
+                account.Balance = 5000.00m;
+                await repo.SaveAsync(account, CancellationToken.None);
+            }
+        }
 
         // Act
         var response = await client.GetAsync($"/api/v1/accounts/{accountNumber}/balance");
@@ -67,7 +78,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var dto = await response.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var dto = await response.Content.ReadFromJsonAsync<AccountBalanceResponse>();
         dto.Should().NotBeNull();
         dto!.AccountNumber.Should().Be(accountNumber);
         dto.Balance.Should().Be(5000.00m);
@@ -152,7 +163,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var list = await response.Content.ReadFromJsonAsync<IEnumerable<TransactionDto>>();
+        var list = await response.Content.ReadFromJsonAsync<IEnumerable<TransactionResponse>>();
         list.Should().NotBeNull();
         list.Should().NotBeEmpty();
         list!.Any(t => t.SourceAccountNumber == accountNumber || t.DestinationAccountNumber == accountNumber).Should().BeTrue();

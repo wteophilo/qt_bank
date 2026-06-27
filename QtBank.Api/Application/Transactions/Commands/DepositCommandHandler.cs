@@ -15,7 +15,7 @@ namespace QtBank.Api.Application.Transactions.Commands;
 /// <summary>
 /// Command handler for processing account deposit requests.
 /// </summary>
-public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<TransferResponseDto>>
+public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<TransferResponse>>
 {
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
@@ -34,7 +34,7 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
         _logger = logger;
     }
 
-    public async Task<Result<TransferResponseDto>> Handle(DepositCommand request, CancellationToken cancellationToken)
+    public async Task<Result<TransferResponse>> Handle(DepositCommand request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Processing DepositCommand for account {AccountNumber}", request.AccountNumber);
 
@@ -43,7 +43,7 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
         if (existingTx is not null)
         {
             _logger.LogInformation("Deposit already processed for idempotency key {Key}", request.IdempotencyKey);
-            return Result<TransferResponseDto>.Ok(new TransferResponseDto(existingTx.Id, existingTx.Status.ToString(), existingTx.CreatedAt));
+            return Result<TransferResponse>.Ok(new TransferResponse(existingTx.Id, existingTx.Status.ToString(), existingTx.CreatedAt));
         }
 
         // 1. Fetch Account
@@ -51,14 +51,14 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
         if (account is null)
         {
             _logger.LogError("Deposit failed: Account not found. {Account}", request.AccountNumber);
-            return Result<TransferResponseDto>.Fail("Account not found.");
+            return Result<TransferResponse>.Fail("Account not found.");
         }
 
         // 2. Validate active status
         if (!account.IsActive())
         {
             _logger.LogError("Deposit failed: Account is not active. {Account}", request.AccountNumber);
-            return Result<TransferResponseDto>.Fail("Account is not active.");
+            return Result<TransferResponse>.Fail("Account is not active.");
         }
 
         // 3. Update Balance
@@ -84,7 +84,7 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
         // 5. Publish integration event
         await PublishDepositCompletedEventAsync(savedTx, cancellationToken);
 
-        return Result<TransferResponseDto>.Ok(new TransferResponseDto(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
+        return Result<TransferResponse>.Ok(new TransferResponse(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
     }
 
     private async Task PublishDepositCompletedEventAsync(Transaction tx, CancellationToken cancellationToken)

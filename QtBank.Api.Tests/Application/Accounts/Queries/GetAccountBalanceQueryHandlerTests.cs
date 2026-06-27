@@ -26,7 +26,7 @@ public class GetAccountBalanceQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnAccountBalanceDto_WhenAccountExists()
+    public async Task Handle_ShouldReturnAccountBalanceResponse_WhenAccountExists()
     {
         // Arrange
         var accountNumber = "123456";

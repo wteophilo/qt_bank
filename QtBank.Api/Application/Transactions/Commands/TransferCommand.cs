@@ -17,7 +17,7 @@ public record TransferCommand(
     decimal Amount,
     Currency Currency,
     Guid IdempotencyKey
-) : IRequest<Result<TransferResponseDto>>
+) : IRequest<Result<TransferResponse>>
 {
     /// <summary>
     /// Overloaded constructor for compatibility with existing code and tests.

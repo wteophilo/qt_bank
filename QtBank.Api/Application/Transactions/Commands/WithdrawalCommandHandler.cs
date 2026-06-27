@@ -15,7 +15,7 @@ namespace QtBank.Api.Application.Transactions.Commands;
 /// <summary>
 /// Command handler for processing account withdrawal requests.
 /// </summary>
-public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Result<TransferResponseDto>>
+public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Result<TransferResponse>>
 {
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
@@ -34,7 +34,7 @@ public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Resul
         _logger = logger;
     }
 
-    public async Task<Result<TransferResponseDto>> Handle(WithdrawalCommand request, CancellationToken cancellationToken)
+    public async Task<Result<TransferResponse>> Handle(WithdrawalCommand request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Processing WithdrawalCommand for account {AccountNumber}", request.AccountNumber);
 
@@ -43,7 +43,7 @@ public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Resul
         if (existingTx is not null)
         {
             _logger.LogInformation("Withdrawal already processed for idempotency key {Key}", request.IdempotencyKey);
-            return Result<TransferResponseDto>.Ok(new TransferResponseDto(existingTx.Id, existingTx.Status.ToString(), existingTx.CreatedAt));
+            return Result<TransferResponse>.Ok(new TransferResponse(existingTx.Id, existingTx.Status.ToString(), existingTx.CreatedAt));
         }
 
         // 1. Fetch Account
@@ -51,21 +51,21 @@ public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Resul
         if (account is null)
         {
             _logger.LogError("Withdrawal failed: Account not found. {Account}", request.AccountNumber);
-            return Result<TransferResponseDto>.Fail("Account not found.");
+            return Result<TransferResponse>.Fail("Account not found.");
         }
 
         // 2. Validate active status
         if (!account.IsActive())
         {
             _logger.LogError("Withdrawal failed: Account is not active. {Account}", request.AccountNumber);
-            return Result<TransferResponseDto>.Fail("Account is not active.");
+            return Result<TransferResponse>.Fail("Account is not active.");
         }
 
         // 3. Validate sufficient funds
         if (!account.CanDebit(request.Amount))
         {
             _logger.LogError("Withdrawal failed: Insufficient funds in {Account}.", request.AccountNumber);
-            return Result<TransferResponseDto>.Fail("Insufficient funds.");
+            return Result<TransferResponse>.Fail("Insufficient funds.");
         }
 
         // 4. Update Balance
@@ -91,7 +91,7 @@ public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Resul
         // 6. Publish integration event
         await PublishWithdrawalCompletedEventAsync(savedTx, cancellationToken);
 
-        return Result<TransferResponseDto>.Ok(new TransferResponseDto(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
+        return Result<TransferResponse>.Ok(new TransferResponse(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
     }
 
     private async Task PublishWithdrawalCompletedEventAsync(Transaction tx, CancellationToken cancellationToken)
