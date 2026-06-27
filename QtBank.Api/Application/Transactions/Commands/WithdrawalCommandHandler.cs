@@ -38,6 +38,14 @@ public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Resul
     {
         _logger.LogInformation("Processing WithdrawalCommand for account {AccountNumber}", request.AccountNumber);
 
+        // 0. Check Idempotency
+        var existingTx = await _transactionRepository.GetByIdempotencyKeyAsync(request.IdempotencyKey, cancellationToken);
+        if (existingTx is not null)
+        {
+            _logger.LogInformation("Withdrawal already processed for idempotency key {Key}", request.IdempotencyKey);
+            return Result<TransferResponseDto>.Ok(new TransferResponseDto(existingTx.Id, existingTx.Status.ToString(), existingTx.CreatedAt));
+        }
+
         // 1. Fetch Account
         var account = await _accountRepository.GetByNumberAsync(request.AccountNumber, cancellationToken);
         if (account is null)
@@ -73,7 +81,7 @@ public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Resul
             Amount = request.Amount,
             Currency = request.Currency,
             Type = TransactionType.Withdrawal,
-            IdempotencyKey = Guid.NewGuid(),
+            IdempotencyKey = request.IdempotencyKey,
             Status = TransactionStatus.Processing,
             CreatedAt = DateTime.UtcNow
         };

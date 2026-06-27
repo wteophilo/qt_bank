@@ -38,6 +38,14 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
     {
         _logger.LogInformation("Processing DepositCommand for account {AccountNumber}", request.AccountNumber);
 
+        // 0. Check Idempotency
+        var existingTx = await _transactionRepository.GetByIdempotencyKeyAsync(request.IdempotencyKey, cancellationToken);
+        if (existingTx is not null)
+        {
+            _logger.LogInformation("Deposit already processed for idempotency key {Key}", request.IdempotencyKey);
+            return Result<TransferResponseDto>.Ok(new TransferResponseDto(existingTx.Id, existingTx.Status.ToString(), existingTx.CreatedAt));
+        }
+
         // 1. Fetch Account
         var account = await _accountRepository.GetByNumberAsync(request.AccountNumber, cancellationToken);
         if (account is null)
@@ -54,7 +62,7 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
         }
 
         // 3. Update Balance
-        account.Balance += request.Amount;
+        account.Credit(request.Amount);
         await _accountRepository.SaveAsync(account, cancellationToken);
 
         // 4. Create & Persist Transaction
@@ -66,7 +74,7 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
             Amount = request.Amount,
             Currency = request.Currency,
             Type = TransactionType.Deposit,
-            IdempotencyKey = Guid.NewGuid(),
+            IdempotencyKey = request.IdempotencyKey,
             Status = TransactionStatus.Processing,
             CreatedAt = DateTime.UtcNow
         };

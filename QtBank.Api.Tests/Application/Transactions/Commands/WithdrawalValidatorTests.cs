@@ -119,4 +119,25 @@ public class WithdrawalValidatorTests
             error.PropertyName == nameof(WithdrawalCommand.Currency) &&
             error.ErrorMessage == "Currency must be one of the supported types: BRL, USD, EUR, CAD.");
     }
+
+    [Fact]
+    public void Validator_ShouldFail_WhenIdempotencyKeyIsEmpty()
+    {
+        // Arrange
+        var command = new WithdrawalCommand(
+            "111111",
+            150.00m,
+            Currency.USD,
+            Guid.Empty
+        );
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(error =>
+            error.PropertyName == nameof(WithdrawalCommand.IdempotencyKey) &&
+            error.ErrorMessage == "Idempotency key is required.");
+    }
 }

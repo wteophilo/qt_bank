@@ -599,6 +599,253 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         problemDetails.Detail.Should().Be("Database connection failed");
         problemDetails.Status.Should().Be(500);
     }
+
+    [Fact]
+    public async Task Transfer_WithMissingIdempotencyKey_Returns400BadRequest()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var rawPayload = new
+        {
+            SourceAccountNumber = "111111",
+            DestinationAccountNumber = "222222",
+            Amount = 100m,
+            Currency = "USD"
+            // IdempotencyKey is missing
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", rawPayload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var contentString = await response.Content.ReadAsStringAsync();
+        var problemDetails = JsonSerializer.Deserialize<ProblemDetails>(contentString, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("One or more validation errors occurred.");
+        problemDetails.Status.Should().Be(400);
+
+        problemDetails.Extensions.Should().ContainKey("errors");
+        var errorsJson = problemDetails.Extensions["errors"]?.ToString();
+        errorsJson.Should().NotBeNull();
+
+        var errors = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string[]>>(errorsJson!);
+        errors.Should().NotBeNull();
+        errors.Should().ContainKey("IdempotencyKey");
+        errors["IdempotencyKey"].Should().Contain("Idempotency key is required.");
+    }
+
+    [Fact]
+    public async Task Deposit_WithMissingIdempotencyKey_Returns400BadRequest()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var rawPayload = new
+        {
+            AccountNumber = "111111",
+            Amount = 100m,
+            Currency = "USD"
+            // IdempotencyKey is missing
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", rawPayload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var contentString = await response.Content.ReadAsStringAsync();
+        var problemDetails = JsonSerializer.Deserialize<ProblemDetails>(contentString, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("One or more validation errors occurred.");
+        problemDetails.Status.Should().Be(400);
+
+        problemDetails.Extensions.Should().ContainKey("errors");
+        var errorsJson = problemDetails.Extensions["errors"]?.ToString();
+        errorsJson.Should().NotBeNull();
+
+        var errors = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string[]>>(errorsJson!);
+        errors.Should().NotBeNull();
+        errors.Should().ContainKey("IdempotencyKey");
+        errors["IdempotencyKey"].Should().Contain("Idempotency key is required.");
+    }
+
+    [Fact]
+    public async Task Withdrawal_WithMissingIdempotencyKey_Returns400BadRequest()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var rawPayload = new
+        {
+            AccountNumber = "111111",
+            Amount = 100m,
+            Currency = "USD"
+            // IdempotencyKey is missing
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", rawPayload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var contentString = await response.Content.ReadAsStringAsync();
+        var problemDetails = JsonSerializer.Deserialize<ProblemDetails>(contentString, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("One or more validation errors occurred.");
+        problemDetails.Status.Should().Be(400);
+
+        problemDetails.Extensions.Should().ContainKey("errors");
+        var errorsJson = problemDetails.Extensions["errors"]?.ToString();
+        errorsJson.Should().NotBeNull();
+
+        var errors = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string[]>>(errorsJson!);
+        errors.Should().NotBeNull();
+        errors.Should().ContainKey("IdempotencyKey");
+        errors["IdempotencyKey"].Should().Contain("Idempotency key is required.");
+    }
+
+    [Fact]
+    public async Task Deposit_IsIdempotent_DoesNotMutateBalanceTwice()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var idempotencyKey = Guid.NewGuid();
+        var command = new DepositCommand("111111", 150m, Currency.USD, idempotencyKey);
+
+        // Get initial balance
+        var balanceResponseBefore = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var beforeDto = await balanceResponseBefore.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var initialBalance = beforeDto!.Balance;
+
+        // Act - First request
+        var firstResponse = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var firstResult = await firstResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        firstResult.Should().NotBeNull();
+
+        // Get balance after first deposit
+        var balanceResponseMiddle = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var middleDto = await balanceResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        middleDto!.Balance.Should().Be(initialBalance + 150m);
+
+        // Act - Second request with the same idempotency key
+        var secondResponse = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var secondResult = await secondResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        secondResult.Should().NotBeNull();
+
+        // Assert that the returned transaction ID and status are the same as the first request
+        secondResult!.TransactionId.Should().Be(firstResult!.TransactionId);
+
+        // Verify balance did not change again (remains initial + 150m)
+        var balanceResponseAfter = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var afterDto = await balanceResponseAfter.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        afterDto!.Balance.Should().Be(initialBalance + 150m);
+    }
+
+    [Fact]
+    public async Task Withdrawal_IsIdempotent_DoesNotMutateBalanceTwice()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var idempotencyKey = Guid.NewGuid();
+        var command = new WithdrawalCommand("111111", 150m, Currency.USD, idempotencyKey);
+
+        // Get initial balance
+        var balanceResponseBefore = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var beforeDto = await balanceResponseBefore.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var initialBalance = beforeDto!.Balance;
+
+        // Act - First request
+        var firstResponse = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", command);
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var firstResult = await firstResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        firstResult.Should().NotBeNull();
+
+        // Get balance after first withdrawal
+        var balanceResponseMiddle = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var middleDto = await balanceResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        middleDto!.Balance.Should().Be(initialBalance - 150m);
+
+        // Act - Second request with the same idempotency key
+        var secondResponse = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", command);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var secondResult = await secondResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        secondResult.Should().NotBeNull();
+
+        // Assert that the returned transaction ID and status are the same as the first request
+        secondResult!.TransactionId.Should().Be(firstResult!.TransactionId);
+
+        // Verify balance did not change again (remains initial - 150m)
+        var balanceResponseAfter = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var afterDto = await balanceResponseAfter.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        afterDto!.Balance.Should().Be(initialBalance - 150m);
+    }
+
+    [Fact]
+    public async Task Transfer_IsIdempotent_DoesNotMutateBalanceTwice()
+    {
+        // Arrange
+        var client = CreateAuthorizedClient();
+        var idempotencyKey = Guid.NewGuid();
+        var command = new TransferCommand("111111", "222222", 150m, Currency.USD, idempotencyKey);
+
+        // Get initial balances
+        var aliceResponseBefore = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var aliceBefore = await aliceResponseBefore.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var aliceInitial = aliceBefore!.Balance;
+
+        var bobResponseBefore = await client.GetAsync("/api/v1/accounts/222222/balance");
+        var bobBefore = await bobResponseBefore.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        var bobInitial = bobBefore!.Balance;
+
+        // Act - First request
+        var firstResponse = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var firstResult = await firstResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        firstResult.Should().NotBeNull();
+
+        // Get middle balances
+        var aliceResponseMiddle = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var aliceMiddle = await aliceResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        aliceMiddle!.Balance.Should().Be(aliceInitial - 150m);
+
+        var bobResponseMiddle = await client.GetAsync("/api/v1/accounts/222222/balance");
+        var bobMiddle = await bobResponseMiddle.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        bobMiddle!.Balance.Should().Be(bobInitial + 150m);
+
+        // Act - Second request with the same idempotency key
+        var secondResponse = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var secondResult = await secondResponse.Content.ReadFromJsonAsync<TransferResponseDto>();
+        secondResult.Should().NotBeNull();
+
+        // Assert that the returned transaction ID and status are the same as the first request
+        secondResult!.TransactionId.Should().Be(firstResult!.TransactionId);
+
+        // Verify balances did not change again
+        var aliceResponseAfter = await client.GetAsync("/api/v1/accounts/111111/balance");
+        var aliceAfter = await aliceResponseAfter.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        aliceAfter!.Balance.Should().Be(aliceInitial - 150m);
+
+        var bobResponseAfter = await client.GetAsync("/api/v1/accounts/222222/balance");
+        var bobAfter = await bobResponseAfter.Content.ReadFromJsonAsync<AccountBalanceDto>();
+        bobAfter!.Balance.Should().Be(bobInitial + 150m);
+    }
 }
 
 

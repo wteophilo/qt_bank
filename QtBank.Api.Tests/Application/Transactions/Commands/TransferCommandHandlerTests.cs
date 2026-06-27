@@ -222,4 +222,44 @@ public class TransferCommandHandlerTests
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Be("Insufficient funds in source account.");
     }
+
+    [Fact]
+    public async Task Handle_ShouldReturnCachedResult_WhenIdempotencyKeyAlreadyExists()
+    {
+        // Arrange
+        var idempotencyKey = Guid.NewGuid();
+        var existingTransactionId = Guid.NewGuid();
+        var existingTx = new Transaction
+        {
+            Id = existingTransactionId,
+            SourceAccountNumber = "111111",
+            DestinationAccountNumber = "222222",
+            Amount = 300m,
+            Currency = Currency.USD,
+            Type = TransactionType.Transfer,
+            IdempotencyKey = idempotencyKey,
+            Status = TransactionStatus.Completed,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-5)
+        };
+
+        _transactionRepository.GetByIdempotencyKeyAsync(idempotencyKey, Arg.Any<CancellationToken>())
+            .Returns(existingTx);
+
+        var command = new TransferCommand("111111", "222222", 300m, Currency.USD, idempotencyKey);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value!.TransactionId.Should().Be(existingTransactionId);
+        result.Value.Status.Should().Be("Completed");
+        result.Value.Timestamp.Should().Be(existingTx.CreatedAt);
+
+        // Verify repository save and publisher were not called
+        await _accountRepository.DidNotReceiveWithAnyArgs().SaveAsync(Arg.Any<Account>(), Arg.Any<CancellationToken>());
+        await _transactionRepository.DidNotReceive().SaveAsync(Arg.Any<Transaction>(), Arg.Any<CancellationToken>());
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>());
+    }
 }
