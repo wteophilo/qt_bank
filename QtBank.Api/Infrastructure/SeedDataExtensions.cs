@@ -19,6 +19,7 @@ public static class SeedDataExtensions
         using (var scope = app.ApplicationServices.CreateScope())
         {
             var accountRepo = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
+            var transactionRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
 
             var aliceId = Guid.Parse("11111111-1111-1111-1111-111111111111");
             accountRepo.SaveAsync(new Account
@@ -51,6 +52,45 @@ public static class SeedDataExtensions
                 OwnerName = "Charlie Davis",
                 CreatedAt = DateTime.UtcNow.AddDays(-2),
                 Status = AccountStatus.Inactive
+            }).GetAwaiter().GetResult();
+
+            // Seed mock transactions
+            transactionRepo.SaveAsync(new Transaction
+            {
+                Id = Guid.NewGuid(),
+                SourceAccountNumber = "111111",
+                DestinationAccountNumber = "333333",
+                Amount = 10.00m,
+                Currency = Currency.BRL,
+                Type = TransactionType.Transfer,
+                IdempotencyKey = Guid.NewGuid(),
+                Status = TransactionStatus.Failed,
+                CreatedAt = DateTime.UtcNow.AddMonths(-1)
+            }).GetAwaiter().GetResult();
+
+            transactionRepo.SaveAsync(new Transaction
+            {
+                Id = Guid.NewGuid(),
+                SourceAccountNumber = "111111",
+                Amount = 200.00m,
+                Currency = Currency.USD,
+                Type = TransactionType.Deposit,
+                IdempotencyKey = Guid.NewGuid(),
+                Status = TransactionStatus.Completed,
+                CreatedAt = DateTime.UtcNow.AddDays(-10)
+            }).GetAwaiter().GetResult();
+
+            transactionRepo.SaveAsync(new Transaction
+            {
+                Id = Guid.NewGuid(),
+                SourceAccountNumber = "111111",
+                DestinationAccountNumber = "222222",
+                Amount = 49.50m,
+                Currency = Currency.USD,
+                Type = TransactionType.Transfer,
+                IdempotencyKey = Guid.NewGuid(),
+                Status = TransactionStatus.Completed,
+                CreatedAt = DateTime.UtcNow.AddDays(-5)
             }).GetAwaiter().GetResult();
         }
 
