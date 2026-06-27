@@ -155,7 +155,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         var accountNumber = "111111";
 
         // Let's execute a transfer first to ensure there's at least one transaction
-        var command = new TransferCommand(accountNumber, "222222", 50m, Currency.USD);
+        var command = new TransferRequest(accountNumber, "222222", 50m, Currency.USD);
         await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
 
         // Act

@@ -19,10 +19,17 @@ public static class TransactionEndpoints
     /// </summary>
     public static IEndpointRouteBuilder MapTransactionEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/v1/transactions/transfer", async (TransferCommand command, IMediator mediator) =>
+        app.MapPost("/api/v1/transactions/transfer", async (TransferRequest request, IMediator mediator) =>
         {
             try
             {
+                var command = new TransferCommand(
+                    request.SourceAccountNumber,
+                    request.DestinationAccountNumber,
+                    request.Amount,
+                    request.Currency,
+                    request.IdempotencyKey
+                );
                 var result = await mediator.Send(command);
                 if (!result.IsSuccess)
                 {
@@ -55,10 +62,16 @@ public static class TransactionEndpoints
         })
         .WithTags("Transactions");
 
-        app.MapPost("/api/v1/transactions/deposit", async (DepositCommand command, IMediator mediator) =>
+        app.MapPost("/api/v1/transactions/deposit", async (DepositRequest request, IMediator mediator) =>
         {
             try
             {
+                var command = new DepositCommand(
+                    request.AccountNumber,
+                    request.Amount,
+                    request.Currency,
+                    request.IdempotencyKey
+                );
                 var result = await mediator.Send(command);
                 if (!result.IsSuccess)
                 {
@@ -90,10 +103,16 @@ public static class TransactionEndpoints
         })
         .WithTags("Transactions");
 
-        app.MapPost("/api/v1/transactions/withdrawal", async (WithdrawalCommand command, IMediator mediator) =>
+        app.MapPost("/api/v1/transactions/withdrawal", async (WithdrawalRequest request, IMediator mediator) =>
         {
             try
             {
+                var command = new WithdrawalCommand(
+                    request.AccountNumber,
+                    request.Amount,
+                    request.Currency,
+                    request.IdempotencyKey
+                );
                 var result = await mediator.Send(command);
                 if (!result.IsSuccess)
                 {

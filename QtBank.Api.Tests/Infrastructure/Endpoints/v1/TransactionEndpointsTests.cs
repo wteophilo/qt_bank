@@ -43,7 +43,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = _factory.CreateClient();
-        var command = new TransferCommand(
+        var command = new TransferRequest(
             "111111",
             "222222",
             100m,
@@ -62,7 +62,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new TransferCommand("111111", "222222", 100m, Currency.USD);
+        var command = new TransferRequest("111111", "222222", 100m, Currency.USD);
 
         // Get initial balances
         var aliceBeforeResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
@@ -102,7 +102,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         // Arrange
         var client = CreateAuthorizedClient();
         // Negative amount, same source/destination, invalid currency
-        var command = new TransferCommand("111111", "111111", -50m, (Currency)999);
+        var command = new TransferRequest("111111", "111111", -50m, (Currency)999);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
@@ -136,7 +136,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new TransferCommand("999999", "222222", 50m, Currency.USD);
+        var command = new TransferRequest("999999", "222222", 50m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
@@ -154,7 +154,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         // Arrange
         var client = CreateAuthorizedClient();
         // Bob's initial balance is 150.50m (or around that depending on other test runs, but he definitely has less than 10000m)
-        var command = new TransferCommand("222222", "111111", 10000m, Currency.USD);
+        var command = new TransferRequest("222222", "111111", 10000m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
@@ -171,7 +171,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new TransferCommand("333333", "111111", 10m, Currency.USD);
+        var command = new TransferRequest("333333", "111111", 10m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
@@ -228,7 +228,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var token = TokenGenerator.GenerateToken("test-user");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var command = new TransferCommand("111111", "222222", 100m, Currency.USD);
+        var command = new TransferRequest("111111", "222222", 100m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/transfer", command);
@@ -247,7 +247,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = _factory.CreateClient();
-        var command = new DepositCommand("111111", 100m, Currency.USD);
+        var command = new DepositRequest("111111", 100m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
@@ -261,7 +261,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new DepositCommand("111111", 200m, Currency.USD);
+        var command = new DepositRequest("111111", 200m, Currency.USD);
 
         // Get initial balance
         var aliceBeforeResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
@@ -292,7 +292,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         // Arrange
         var client = CreateAuthorizedClient();
         // Negative amount, invalid currency
-        var command = new DepositCommand("111111", -50m, (Currency)999);
+        var command = new DepositRequest("111111", -50m, (Currency)999);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
@@ -325,7 +325,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new DepositCommand("999999", 50m, Currency.USD);
+        var command = new DepositRequest("999999", 50m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
@@ -342,7 +342,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new DepositCommand("333333", 10m, Currency.USD);
+        var command = new DepositRequest("333333", 10m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
@@ -398,7 +398,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var token = TokenGenerator.GenerateToken("test-user");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var command = new DepositCommand("111111", 100m, Currency.USD);
+        var command = new DepositRequest("111111", 100m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/deposit", command);
@@ -417,7 +417,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = _factory.CreateClient();
-        var command = new WithdrawalCommand("111111", 100m, Currency.USD);
+        var command = new WithdrawalRequest("111111", 100m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", command);
@@ -431,7 +431,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new WithdrawalCommand("111111", 200m, Currency.USD);
+        var command = new WithdrawalRequest("111111", 200m, Currency.USD);
 
         // Get initial balance
         var aliceBeforeResponse = await client.GetAsync("/api/v1/accounts/111111/balance");
@@ -462,7 +462,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         // Arrange
         var client = CreateAuthorizedClient();
         // Negative amount, invalid currency
-        var command = new WithdrawalCommand("111111", -50m, (Currency)999);
+        var command = new WithdrawalRequest("111111", -50m, (Currency)999);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", command);
@@ -495,7 +495,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new WithdrawalCommand("999999", 50m, Currency.USD);
+        var command = new WithdrawalRequest("999999", 50m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", command);
@@ -512,7 +512,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     {
         // Arrange
         var client = CreateAuthorizedClient();
-        var command = new WithdrawalCommand("333333", 10m, Currency.USD);
+        var command = new WithdrawalRequest("333333", 10m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", command);
@@ -530,7 +530,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         // Arrange
         var client = CreateAuthorizedClient();
         // Alice has enough to debit 10000m? No, she has 5000m initial
-        var command = new WithdrawalCommand("111111", 10000m, Currency.USD);
+        var command = new WithdrawalRequest("111111", 10000m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", command);
@@ -586,7 +586,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var token = TokenGenerator.GenerateToken("test-user");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var command = new WithdrawalCommand("111111", 100m, Currency.USD);
+        var command = new WithdrawalRequest("111111", 100m, Currency.USD);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/transactions/withdrawal", command);
@@ -724,7 +724,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         // Arrange
         var client = CreateAuthorizedClient();
         var idempotencyKey = Guid.NewGuid();
-        var command = new DepositCommand("111111", 150m, Currency.USD, idempotencyKey);
+        var command = new DepositRequest("111111", 150m, Currency.USD, idempotencyKey);
 
         // Get initial balance
         var balanceResponseBefore = await client.GetAsync("/api/v1/accounts/111111/balance");
@@ -763,7 +763,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         // Arrange
         var client = CreateAuthorizedClient();
         var idempotencyKey = Guid.NewGuid();
-        var command = new WithdrawalCommand("111111", 150m, Currency.USD, idempotencyKey);
+        var command = new WithdrawalRequest("111111", 150m, Currency.USD, idempotencyKey);
 
         // Get initial balance
         var balanceResponseBefore = await client.GetAsync("/api/v1/accounts/111111/balance");
@@ -802,7 +802,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         // Arrange
         var client = CreateAuthorizedClient();
         var idempotencyKey = Guid.NewGuid();
-        var command = new TransferCommand("111111", "222222", 150m, Currency.USD, idempotencyKey);
+        var command = new TransferRequest("111111", "222222", 150m, Currency.USD, idempotencyKey);
 
         // Get initial balances
         var aliceResponseBefore = await client.GetAsync("/api/v1/accounts/111111/balance");
