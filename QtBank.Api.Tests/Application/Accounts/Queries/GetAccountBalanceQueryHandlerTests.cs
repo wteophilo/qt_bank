@@ -49,15 +49,16 @@ public class GetAccountBalanceQueryHandlerTests
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result!.AccountNumber.Should().Be(accountNumber);
-        result.Balance.Should().Be(1500.50m);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value!.AccountNumber.Should().Be(accountNumber);
+        result.Value.Balance.Should().Be(1500.50m);
 
         await _repository.Received(1).GetByNumberAsync(accountNumber, Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnNull_WhenAccountDoesNotExist()
+    public async Task Handle_ShouldReturnFail_WhenAccountDoesNotExist()
     {
         // Arrange
         var accountNumber = "999999";
@@ -70,7 +71,8 @@ public class GetAccountBalanceQueryHandlerTests
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().BeNull();
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Be($"Account with number '{accountNumber}' not found.");
 
         await _repository.Received(1).GetByNumberAsync(accountNumber, Arg.Any<CancellationToken>());
     }
