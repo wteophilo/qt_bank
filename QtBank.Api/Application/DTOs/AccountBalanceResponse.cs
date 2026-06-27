@@ -2,7 +2,7 @@ using System;
 
 namespace QtBank.Api.Application.DTOs;
 
-public record AccountBalanceDto(
+public record AccountBalanceResponse(
     string AccountNumber,
     decimal Balance
 );

@@ -3,9 +3,9 @@ using System;
 namespace QtBank.Api.Application.DTOs;
 
 /// <summary>
-/// Data Transfer Object representing a bank transaction.
+/// Data Transfer Object representing a bank transaction response.
 /// </summary>
-public record TransactionDto(
+public record TransactionResponse(
     Guid Id,
     string SourceAccountNumber,
     string DestinationAccountNumber,

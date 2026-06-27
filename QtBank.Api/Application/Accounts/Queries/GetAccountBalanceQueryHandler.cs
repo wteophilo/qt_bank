@@ -7,7 +7,7 @@ using QtBank.Api.Domain.Repositories;
 
 namespace QtBank.Api.Application.Accounts.Queries;
 
-public class GetAccountBalanceQueryHandler : IRequestHandler<GetAccountBalanceQuery, AccountBalanceDto?>
+public class GetAccountBalanceQueryHandler : IRequestHandler<GetAccountBalanceQuery, AccountBalanceResponse?>
 {
     private readonly IAccountRepository _repository;
     private readonly ILogger<GetAccountBalanceQueryHandler> _logger;
@@ -20,7 +20,7 @@ public class GetAccountBalanceQueryHandler : IRequestHandler<GetAccountBalanceQu
         _logger = logger;
     }
 
-    public async Task<AccountBalanceDto?> Handle(GetAccountBalanceQuery request, CancellationToken cancellationToken)
+    public async Task<AccountBalanceResponse?> Handle(GetAccountBalanceQuery request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Retrieving balance for account number: {AccountNumber}", request.AccountNumber);
 
@@ -31,6 +31,6 @@ public class GetAccountBalanceQueryHandler : IRequestHandler<GetAccountBalanceQu
             return null;
         }
 
-        return new AccountBalanceDto(account.AccountNumber, account.Balance);
+        return new AccountBalanceResponse(account.AccountNumber, account.Balance);
     }
 }
