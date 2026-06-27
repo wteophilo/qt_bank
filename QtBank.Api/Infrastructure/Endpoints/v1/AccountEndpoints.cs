@@ -19,12 +19,12 @@ public static class AccountEndpoints
     {
         app.MapGet("/api/v1/accounts/{accountNumber}/balance", async (string accountNumber, IMediator mediator) =>
         {
-            var response = await mediator.Send(new GetAccountBalanceQuery(accountNumber));
-            if (response is null)
+            var result = await mediator.Send(new GetAccountBalanceQuery(accountNumber));
+            if (!result.IsSuccess)
             {
-                return Results.NotFound(new { error = $"Account with number '{accountNumber}' not found." });
+                return Results.NotFound(new { error = result.Error });
             }
-            return Results.Ok(response);
+            return Results.Ok(result.Value);
         })
         .RequireAuthorization()
         .WithName("GetAccountBalance")
@@ -43,12 +43,12 @@ public static class AccountEndpoints
         {
             try
             {
-                var response = await mediator.Send(new GetAccountTransactionsQuery(accountNumber));
-                if (response is null)
+                var result = await mediator.Send(new GetAccountTransactionsQuery(accountNumber));
+                if (!result.IsSuccess)
                 {
-                    return Results.NotFound(new { error = $"Account with number '{accountNumber}' not found." });
+                    return Results.NotFound(new { error = result.Error });
                 }
-                return Results.Ok(response);
+                return Results.Ok(result.Value);
             }
             catch (ValidationException)
             {

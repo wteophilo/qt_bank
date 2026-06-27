@@ -43,7 +43,8 @@ public class GetAccountTransactionsQueryHandlerTests
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().BeNull();
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Be($"Account with number '{accountNumber}' not found.");
         await _accountRepository.Received(1).GetByNumberAsync(accountNumber, Arg.Any<CancellationToken>());
         await _transactionRepository.DidNotReceiveWithAnyArgs().GetByAccountNumberAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -92,8 +93,9 @@ public class GetAccountTransactionsQueryHandlerTests
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        var resultList = result!.ToList();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        var resultList = result.Value!.ToList();
         resultList.Should().HaveCount(2);
 
         resultList[0].SourceAccountNumber.Should().Be(accountNumber);

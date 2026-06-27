@@ -40,7 +40,7 @@ public static class AuthEndpoints
 /// <summary>
 /// Request payload for generating a security token.
 /// </summary>
-/// <param name="Username">The username of the user requesting authorization.</param>
+/// <param name="Username" example="Alice Smith">The username of the user requesting authorization.</param>
 public record TokenRequest(string Username);
 
 /// <summary>
