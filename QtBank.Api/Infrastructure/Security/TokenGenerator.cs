@@ -22,7 +22,8 @@ public static class TokenGenerator
             Subject = new ClaimsIdentity(new[]
             {
                 new Claim(ClaimTypes.Name, username),
-                new Claim(ClaimTypes.Role, role)
+                new Claim(ClaimTypes.Role, role),
+                new Claim("SessionId", Guid.NewGuid().ToString())
             }),
             Expires = DateTime.UtcNow.AddHours(2),
             Issuer = Issuer,
