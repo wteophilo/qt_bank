@@ -19,18 +19,18 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
 {
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
-    private readonly IPubSubPublisher _publisher;
+    private readonly IOutboxRepository _outboxRepository;
     private readonly ILogger<DepositCommandHandler> _logger;
 
     public DepositCommandHandler(
         IAccountRepository accountRepository,
         ITransactionRepository transactionRepository,
-        IPubSubPublisher publisher,
+        IOutboxRepository outboxRepository,
         ILogger<DepositCommandHandler> logger)
     {
         _accountRepository = accountRepository;
         _transactionRepository = transactionRepository;
-        _publisher = publisher;
+        _outboxRepository = outboxRepository;
         _logger = logger;
     }
 
@@ -81,13 +81,13 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
 
         var savedTx = await _transactionRepository.SaveAsync(transaction, cancellationToken);
 
-        // 5. Publish integration event
-        await PublishDepositCompletedEventAsync(savedTx, cancellationToken);
+        // 5. Save Outbox Message
+        await SaveOutboxMessageAsync(savedTx, cancellationToken);
 
         return Result<TransferResponse>.Ok(new TransferResponse(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
     }
 
-    private async Task PublishDepositCompletedEventAsync(Transaction tx, CancellationToken cancellationToken)
+    private async Task SaveOutboxMessageAsync(Transaction tx, CancellationToken cancellationToken)
     {
         var ev = new DepositCompleted(
             tx.Id,
@@ -98,6 +98,14 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
             tx.Status.ToString(),
             tx.CreatedAt
         );
-        await _publisher.PublishAsync("deposits-topic", ev, cancellationToken);
+        
+        var message = new OutboxMessage
+        {
+            Type = typeof(DepositCompleted).AssemblyQualifiedName ?? typeof(DepositCompleted).FullName!,
+            Topic = "deposits-topic",
+            Content = System.Text.Json.JsonSerializer.Serialize(ev)
+        };
+
+        await _outboxRepository.SaveAsync(message, cancellationToken);
     }
 }

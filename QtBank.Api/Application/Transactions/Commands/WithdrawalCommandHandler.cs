@@ -19,18 +19,18 @@ public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Resul
 {
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
-    private readonly IPubSubPublisher _publisher;
+    private readonly IOutboxRepository _outboxRepository;
     private readonly ILogger<WithdrawalCommandHandler> _logger;
 
     public WithdrawalCommandHandler(
         IAccountRepository accountRepository,
         ITransactionRepository transactionRepository,
-        IPubSubPublisher publisher,
+        IOutboxRepository outboxRepository,
         ILogger<WithdrawalCommandHandler> logger)
     {
         _accountRepository = accountRepository;
         _transactionRepository = transactionRepository;
-        _publisher = publisher;
+        _outboxRepository = outboxRepository;
         _logger = logger;
     }
 
@@ -88,13 +88,13 @@ public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Resul
 
         var savedTx = await _transactionRepository.SaveAsync(transaction, cancellationToken);
 
-        // 6. Publish integration event
-        await PublishWithdrawalCompletedEventAsync(savedTx, cancellationToken);
+        // 6. Save Outbox Message
+        await SaveOutboxMessageAsync(savedTx, cancellationToken);
 
         return Result<TransferResponse>.Ok(new TransferResponse(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
     }
 
-    private async Task PublishWithdrawalCompletedEventAsync(Transaction tx, CancellationToken cancellationToken)
+    private async Task SaveOutboxMessageAsync(Transaction tx, CancellationToken cancellationToken)
     {
         var ev = new WithdrawalCompleted(
             tx.Id,
@@ -105,6 +105,14 @@ public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Resul
             tx.Status.ToString(),
             tx.CreatedAt
         );
-        await _publisher.PublishAsync("withdrawals-topic", ev, cancellationToken);
+        
+        var message = new OutboxMessage
+        {
+            Type = typeof(WithdrawalCompleted).AssemblyQualifiedName ?? typeof(WithdrawalCompleted).FullName!,
+            Topic = "withdrawals-topic",
+            Content = System.Text.Json.JsonSerializer.Serialize(ev)
+        };
+
+        await _outboxRepository.SaveAsync(message, cancellationToken);
     }
 }

@@ -19,18 +19,18 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
 {
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
-    private readonly IPubSubPublisher _publisher;
+    private readonly IOutboxRepository _outboxRepository;
     private readonly ILogger<TransferCommandHandler> _logger;
 
     public TransferCommandHandler(
         IAccountRepository accountRepository,
         ITransactionRepository transactionRepository,
-        IPubSubPublisher publisher,
+        IOutboxRepository outboxRepository,
         ILogger<TransferCommandHandler> logger)
     {
         _accountRepository = accountRepository;
         _transactionRepository = transactionRepository;
-        _publisher = publisher;
+        _outboxRepository = outboxRepository;
         _logger = logger;
     }
 
@@ -57,8 +57,8 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
         // 3. Execute & Persist
         var savedTx = await ExecuteAndPersistTransferAsync(sourceAccount!, destinationAccount!, request, cancellationToken);
 
-        // 4. Publish Event
-        await PublishTransferCompletedEventAsync(savedTx, cancellationToken);
+        // 4. Save Outbox Message
+        await SaveOutboxMessageAsync(savedTx, cancellationToken);
 
         return Result<TransferResponse>.Ok(new TransferResponse(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
     }
@@ -116,10 +116,18 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
         return await _transactionRepository.SaveAsync(transaction, cancellationToken);
     }
 
-    private async Task PublishTransferCompletedEventAsync(Transaction tx, CancellationToken cancellationToken)
+    private async Task SaveOutboxMessageAsync(Transaction tx, CancellationToken cancellationToken)
     {
         var ev = new TransferCompleted(tx.Id, tx.SourceAccountNumber, tx.DestinationAccountNumber, tx.Amount, tx.Currency.ToString(), tx.IdempotencyKey, tx.Status.ToString(), tx.CreatedAt);
-        await _publisher.PublishAsync("transfers-topic", ev, cancellationToken);
+        
+        var message = new OutboxMessage
+        {
+            Type = typeof(TransferCompleted).AssemblyQualifiedName ?? typeof(TransferCompleted).FullName!,
+            Topic = "transfers-topic",
+            Content = System.Text.Json.JsonSerializer.Serialize(ev)
+        };
+
+        await _outboxRepository.SaveAsync(message, cancellationToken);
     }
 }
 
