@@ -68,7 +68,7 @@ public class GetAccountTransactionsQueryHandlerTests
                 Type = TransactionType.Transfer,
                 IdempotencyKey = Guid.NewGuid(),
                 Status = TransactionStatus.Completed,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow.AddMinutes(-10) // Older transaction
             },
             new()
             {
@@ -80,7 +80,7 @@ public class GetAccountTransactionsQueryHandlerTests
                 Type = TransactionType.Deposit,
                 IdempotencyKey = Guid.NewGuid(),
                 Status = TransactionStatus.Processing,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow // Newer transaction
             }
         };
 
@@ -98,19 +98,21 @@ public class GetAccountTransactionsQueryHandlerTests
         var resultList = result.Value!.ToList();
         resultList.Should().HaveCount(2);
 
-        resultList[0].SourceAccountNumber.Should().Be(accountNumber);
-        resultList[0].DestinationAccountNumber.Should().Be("222222");
-        resultList[0].Amount.Should().Be(100m);
-        resultList[0].Currency.Should().Be("USD");
-        resultList[0].Type.Should().Be("Transfer");
-        resultList[0].Status.Should().Be("Completed");
+        // First item should be the newer one (Deposit)
+        resultList[0].SourceAccountNumber.Should().Be("333333");
+        resultList[0].DestinationAccountNumber.Should().Be(accountNumber);
+        resultList[0].Amount.Should().Be(250m);
+        resultList[0].Currency.Should().Be("BRL");
+        resultList[0].Type.Should().Be("Deposit");
+        resultList[0].Status.Should().Be("Processing");
 
-        resultList[1].SourceAccountNumber.Should().Be("333333");
-        resultList[1].DestinationAccountNumber.Should().Be(accountNumber);
-        resultList[1].Amount.Should().Be(250m);
-        resultList[1].Currency.Should().Be("BRL");
-        resultList[1].Type.Should().Be("Deposit");
-        resultList[1].Status.Should().Be("Processing");
+        // Second item should be the older one (Transfer)
+        resultList[1].SourceAccountNumber.Should().Be(accountNumber);
+        resultList[1].DestinationAccountNumber.Should().Be("222222");
+        resultList[1].Amount.Should().Be(100m);
+        resultList[1].Currency.Should().Be("USD");
+        resultList[1].Type.Should().Be("Transfer");
+        resultList[1].Status.Should().Be("Completed");
 
         await _accountRepository.Received(1).GetByNumberAsync(accountNumber, Arg.Any<CancellationToken>());
         await _transactionRepository.Received(1).GetByAccountNumberAsync(accountNumber, Arg.Any<CancellationToken>());
