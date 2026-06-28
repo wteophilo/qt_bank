@@ -168,7 +168,7 @@ public class AccountEndpointsTests : IClassFixture<WebApplicationFactory<Program
         list.Should().NotBeEmpty();
         list!.Any(t => t.SourceAccountNumber == accountNumber || t.DestinationAccountNumber == accountNumber).Should().BeTrue();
         
-        var tx = list!.First(t => t.SourceAccountNumber == accountNumber);
+        var tx = list!.First(t => t.SourceAccountNumber == accountNumber && t.DestinationAccountNumber == "222222" && t.Amount == 50m);
         tx.Type.Should().Be("Transfer");
     }
 

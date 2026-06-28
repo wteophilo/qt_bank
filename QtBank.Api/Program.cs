@@ -17,6 +17,7 @@ using QtBank.Api.Infrastructure.Messaging;
 using QtBank.Api.Infrastructure.Security;
 using QtBank.Api.Infrastructure.Middlewares;
 using QtBank.Api.Infrastructure;
+using QtBank.Api.Infrastructure.Http;
 using Microsoft.AspNetCore.Builder;
 using QtBank.Api.Infrastructure.Endpoints.v1;
 
@@ -86,6 +87,16 @@ builder.Services.AddSingleton<IAccountRepository, InMemoryAccountRepository>();
 builder.Services.AddSingleton<ITransactionRepository, InMemoryTransactionRepository>();
 builder.Services.AddSingleton<IPubSubPublisher, InMemoryPubSubPublisher>();
 
+// Configure Correlation ID Infrastructure
+builder.Services.AddCorrelationIdServices();
+
+// Example registration of an external HttpClient using the CorrelationIdDelegatingHandler
+builder.Services.AddHttpClient("ExternalMicroservice", client =>
+{
+    client.BaseAddress = new Uri("https://api.externalmicroservice.local");
+})
+.AddHttpMessageHandler<CorrelationIdDelegatingHandler>();
+
 // Configure JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
@@ -109,6 +120,9 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Enable Correlation ID Middleware early in the pipeline to enrich logging and capture incoming IDs
+app.UseCorrelationId();
 
 app.UseValidationExceptionMiddleware();
 
