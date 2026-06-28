@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -67,6 +69,32 @@ public sealed class CorrelationIdMiddleware
         {
             [_options.LogScopeKey] = correlationId
         };
+
+        // Extract Session ID from Authorization JWT token if present
+        if (context.Request.Headers.TryGetValue("Authorization", out var authHeader) &&
+            authHeader.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            var tokenStr = authHeader.ToString().Substring("Bearer ".Length).Trim();
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                if (handler.CanReadToken(tokenStr))
+                {
+                    var jwtToken = handler.ReadJwtToken(tokenStr);
+                    var sessionIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "SessionId");
+                    if (sessionIdClaim is not null)
+                    {
+                        var sessionId = sessionIdClaim.Value;
+                        context.Items["SessionId"] = sessionId;
+                        logScope["SessionId"] = sessionId;
+                    }
+                }
+            }
+            catch
+            {
+                // Silence parsing errors and let the authentication middleware handle invalid/expired tokens later
+            }
+        }
 
         using (_logger.BeginScope(logScope))
         {

@@ -126,4 +126,46 @@ public class CorrelationIdMiddlewareTests
         // Assert
         scopeCalled.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task InvokeAsync_WhenRequestHasAuthToken_ShouldExtractSessionIdAndAddToLoggerScope()
+    {
+        // Arrange
+        var context = new DefaultHttpContext();
+        var correlationId = Guid.NewGuid().ToString();
+        context.Request.Headers["X-Correlation-Id"] = correlationId;
+
+        // Generate a token which now contains the SessionId
+        var token = QtBank.Api.Infrastructure.Security.TokenGenerator.GenerateToken("test-user");
+        context.Request.Headers["Authorization"] = $"Bearer {token}";
+
+        bool sessionIdInScope = false;
+
+        _logger.When(l => l.BeginScope(Arg.Any<object>()))
+               .Do(info =>
+               {
+                   var scopeObj = info.Arg<object>();
+                   if (scopeObj is IEnumerable<KeyValuePair<string, object>> dictState)
+                   {
+                       foreach (var kvp in dictState)
+                       {
+                           if (kvp.Key == "SessionId" && !string.IsNullOrWhiteSpace(kvp.Value?.ToString()))
+                           {
+                               sessionIdInScope = true;
+                           }
+                       }
+                   }
+               });
+
+        RequestDelegate next = (ctx) => Task.CompletedTask;
+        var middleware = new CorrelationIdMiddleware(next, _logger, _options);
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Items.Should().ContainKey("SessionId");
+        Guid.TryParse(context.Items["SessionId"]!.ToString(), out _).Should().BeTrue();
+        sessionIdInScope.Should().BeTrue();
+    }
 }
