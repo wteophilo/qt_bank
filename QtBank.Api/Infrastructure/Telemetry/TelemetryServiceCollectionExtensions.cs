@@ -1,22 +1,22 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 namespace QtBank.Api.Infrastructure.Telemetry;
 
 /// <summary>
-/// Service collection extension methods to configure observability and tracing utilizing OpenTelemetry.
+/// Service collection extension methods to configure observability, tracing, and metrics utilizing OpenTelemetry.
 /// </summary>
 public static class TelemetryServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers OpenTelemetry tracing services with AspNetCore and HttpClient instrumentation, 
-    /// as well as Console and OTLP exporters.
+    /// Registers OpenTelemetry tracing and metrics services with AspNetCore, HttpClient, and Runtime instrumentation.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="serviceName">The name of the service to register in tracing metadata.</param>
-    /// <param name="serviceVersion">The version of the service to register in tracing metadata.</param>
+    /// <param name="serviceName">The name of the service to register in telemetry metadata.</param>
+    /// <param name="serviceVersion">The version of the service to register in telemetry metadata.</param>
     /// <returns>The service collection with services registered.</returns>
     public static IServiceCollection AddTelemetryServices(
         this IServiceCollection services,
@@ -24,6 +24,9 @@ public static class TelemetryServiceCollectionExtensions
         string serviceVersion = "1.0.0")
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        // Register custom application metrics helper
+        services.AddSingleton<ApplicationMetrics>();
 
         services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
@@ -49,6 +52,20 @@ public static class TelemetryServiceCollectionExtensions
                         // OTLP collector endpoint defaults to http://localhost:4317 (gRPC) or http://localhost:4318 (HTTP).
                         // Can be customized via environment variables such as OTEL_EXPORTER_OTLP_ENDPOINT
                     });
+            })
+            .WithMetrics(metrics =>
+            {
+                metrics
+                    // Capture default inbound ASP.NET Core HTTP metrics (requests count, duration, status codes)
+                    .AddAspNetCoreInstrumentation()
+                    // Capture outbound HttpClient metrics
+                    .AddHttpClientInstrumentation()
+                    // Capture .NET runtime metrics (CPU, Memory, GC, ThreadPool)
+                    .AddRuntimeInstrumentation()
+                    // Register custom application metrics source
+                    .AddMeter(ApplicationMetrics.MeterName)
+                    // Export metrics to Console
+                    .AddConsoleExporter();
             });
 
         return services;

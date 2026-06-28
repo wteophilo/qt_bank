@@ -9,6 +9,7 @@ using QtBank.Api.Domain.Events;
 using QtBank.Api.Domain.Models;
 using QtBank.Api.Domain.Repositories;
 using QtBank.Api.Infrastructure.Messaging;
+using QtBank.Api.Infrastructure.Telemetry;
 using Xunit;
 
 namespace QtBank.Api.Tests.Application.Transactions.Commands;
@@ -18,6 +19,7 @@ public class WithdrawalCommandHandlerTests
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
     private readonly IOutboxRepository _outboxRepository;
+    private readonly ApplicationMetrics _metrics;
     private readonly ILogger<WithdrawalCommandHandler> _logger;
     private readonly WithdrawalCommandHandler _handler;
 
@@ -26,11 +28,13 @@ public class WithdrawalCommandHandlerTests
         _accountRepository = Substitute.For<IAccountRepository>();
         _transactionRepository = Substitute.For<ITransactionRepository>();
         _outboxRepository = Substitute.For<IOutboxRepository>();
+        _metrics = new ApplicationMetrics();
         _logger = Substitute.For<ILogger<WithdrawalCommandHandler>>();
         _handler = new WithdrawalCommandHandler(
             _accountRepository,
             _transactionRepository,
             _outboxRepository,
+            _metrics,
             _logger
         );
     }

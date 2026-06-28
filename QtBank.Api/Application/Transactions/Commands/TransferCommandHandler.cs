@@ -8,6 +8,7 @@ using QtBank.Api.Application.DTOs;
 using QtBank.Api.Domain.Events;
 using QtBank.Api.Domain.Models;
 using QtBank.Api.Domain.Repositories;
+using QtBank.Api.Infrastructure.Telemetry;
 using QtBank.Api.Infrastructure.Messaging;
 
 namespace QtBank.Api.Application.Transactions.Commands;
@@ -20,17 +21,20 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
     private readonly IOutboxRepository _outboxRepository;
+    private readonly ApplicationMetrics _metrics;
     private readonly ILogger<TransferCommandHandler> _logger;
 
     public TransferCommandHandler(
         IAccountRepository accountRepository,
         ITransactionRepository transactionRepository,
         IOutboxRepository outboxRepository,
+        ApplicationMetrics metrics,
         ILogger<TransferCommandHandler> logger)
     {
         _accountRepository = accountRepository;
         _transactionRepository = transactionRepository;
         _outboxRepository = outboxRepository;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -52,13 +56,19 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
 
         // 2. Validations
         var validationResult = ValidateTransferRules(sourceAccount, destinationAccount, request);
-        if (validationResult is not null) return validationResult.Value;
+        if (validationResult is not null)
+        {
+            _metrics.RecordTransaction("Transfer", "Failed", (double)request.Amount);
+            return validationResult.Value;
+        }
 
         // 3. Execute & Persist
         var savedTx = await ExecuteAndPersistTransferAsync(sourceAccount!, destinationAccount!, request, cancellationToken);
 
         // 4. Save Outbox Message
         await SaveOutboxMessageAsync(savedTx, cancellationToken);
+
+        _metrics.RecordTransaction("Transfer", "Success", (double)request.Amount);
 
         return Result<TransferResponse>.Ok(new TransferResponse(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
     }
