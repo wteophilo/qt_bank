@@ -81,7 +81,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var transferResult = await response.Content.ReadFromJsonAsync<TransferResponse>();
         transferResult.Should().NotBeNull();
         transferResult!.TransactionId.Should().NotBeEmpty();
-        transferResult.Status.Should().Be("Processing");
+        transferResult.Status.Should().Be("Completed");
         transferResult.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
 
         // Act - Verify Balances Updated (Alice: -100m; Bob: +100m)
@@ -276,7 +276,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var depositResult = await response.Content.ReadFromJsonAsync<TransferResponse>();
         depositResult.Should().NotBeNull();
         depositResult!.TransactionId.Should().NotBeEmpty();
-        depositResult.Status.Should().Be("Processing");
+        depositResult.Status.Should().Be("Completed");
         depositResult.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
 
         // Act - Verify Balance Updated (Alice: +200m)
@@ -446,7 +446,7 @@ public class TransactionEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var withdrawalResult = await response.Content.ReadFromJsonAsync<TransferResponse>();
         withdrawalResult.Should().NotBeNull();
         withdrawalResult!.TransactionId.Should().NotBeEmpty();
-        withdrawalResult.Status.Should().Be("Processing");
+        withdrawalResult.Status.Should().Be("Completed");
         withdrawalResult.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
 
         // Act - Verify Balance Updated (Alice: -200m)

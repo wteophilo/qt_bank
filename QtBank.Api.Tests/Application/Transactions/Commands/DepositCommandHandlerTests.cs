@@ -64,7 +64,7 @@ public class DepositCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
-        result.Value!.Status.Should().Be("Processing");
+        result.Value!.Status.Should().Be("Completed");
         result.Value.TransactionId.Should().NotBeEmpty();
 
         account.Balance.Should().Be(1300m);
@@ -81,7 +81,7 @@ public class DepositCommandHandlerTests
                 t.Currency == Currency.USD &&
                 t.Type == TransactionType.Deposit &&
                 t.IdempotencyKey != Guid.Empty &&
-                t.Status == TransactionStatus.Processing
+                t.Status == TransactionStatus.Completed
             ),
             Arg.Any<CancellationToken>()
         );
@@ -95,7 +95,7 @@ public class DepositCommandHandlerTests
                 e.Amount == 300m &&
                 e.Currency == "USD" &&
                 e.IdempotencyKey != Guid.Empty &&
-                e.Status == "Processing"
+                e.Status == "Completed"
             ),
             Arg.Any<CancellationToken>()
         );
@@ -124,11 +124,11 @@ public class DepositCommandHandlerTests
     {
         // Arrange
         var accountNumber = "111111";
-        var account = new Account 
-        { 
-            Id = Guid.NewGuid(), 
-            AccountNumber = accountNumber, 
-            Status = AccountStatus.Inactive 
+        var account = new Account
+        {
+            Id = Guid.NewGuid(),
+            AccountNumber = accountNumber,
+            Status = AccountStatus.Inactive
         };
 
         _accountRepository.GetByNumberAsync(accountNumber, Arg.Any<CancellationToken>())

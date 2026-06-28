@@ -109,7 +109,7 @@ public class TransferCommandHandler : IRequestHandler<TransferCommand, Result<Tr
             Currency = request.Currency,
             Type = TransactionType.Transfer,
             IdempotencyKey = request.IdempotencyKey,
-            Status = TransactionStatus.Processing,
+            Status = TransactionStatus.Completed,
             CreatedAt = DateTime.UtcNow
         };
 

@@ -75,7 +75,7 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
             Currency = request.Currency,
             Type = TransactionType.Deposit,
             IdempotencyKey = request.IdempotencyKey,
-            Status = TransactionStatus.Processing,
+            Status = TransactionStatus.Completed,
             CreatedAt = DateTime.UtcNow
         };
 

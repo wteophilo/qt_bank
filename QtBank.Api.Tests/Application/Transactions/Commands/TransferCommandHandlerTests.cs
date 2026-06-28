@@ -77,7 +77,7 @@ public class TransferCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
-        result.Value!.Status.Should().Be("Processing");
+        result.Value!.Status.Should().Be("Completed");
         result.Value.TransactionId.Should().NotBeEmpty();
 
         sourceAccount.Balance.Should().Be(700m);
@@ -96,7 +96,7 @@ public class TransferCommandHandlerTests
                 t.Currency == Currency.USD &&
                 t.Type == TransactionType.Transfer &&
                 t.IdempotencyKey != Guid.Empty &&
-                t.Status == TransactionStatus.Processing
+                t.Status == TransactionStatus.Completed
             ),
             Arg.Any<CancellationToken>()
         );
@@ -111,7 +111,7 @@ public class TransferCommandHandlerTests
                 e.Amount == 300m &&
                 e.Currency == "USD" &&
                 e.IdempotencyKey != Guid.Empty &&
-                e.Status == "Processing"
+                e.Status == "Completed"
             ),
             Arg.Any<CancellationToken>()
         );
