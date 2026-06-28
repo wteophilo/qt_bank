@@ -43,17 +43,19 @@ public class GetAccountTransactionsQueryHandler : IRequestHandler<GetAccountTran
 
         var transactions = await _transactionRepository.GetByAccountNumberAsync(request.AccountNumber, cancellationToken);
 
-        var result = transactions.Select(t => new TransactionResponse(
-            t.Id,
-            t.SourceAccountNumber,
-            t.DestinationAccountNumber,
-            t.Amount,
-            t.Currency.ToString(),
-            t.Type.ToString(),
-            t.IdempotencyKey,
-            t.Status.ToString(),
-            t.CreatedAt
-        )).ToList();
+        var result = transactions
+            .OrderByDescending(t => t.CreatedAt)
+            .Select(t => new TransactionResponse(
+                t.Id,
+                t.SourceAccountNumber,
+                t.DestinationAccountNumber,
+                t.Amount,
+                t.Currency.ToString(),
+                t.Type.ToString(),
+                t.IdempotencyKey,
+                t.Status.ToString(),
+                t.CreatedAt
+            )).ToList();
 
         return Result<IEnumerable<TransactionResponse>>.Ok(result);
     }
