@@ -64,7 +64,7 @@ public class WithdrawalCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
-        result.Value!.Status.Should().Be("Processing");
+        result.Value!.Status.Should().Be("Completed");
         result.Value.TransactionId.Should().NotBeEmpty();
 
         account.Balance.Should().Be(700m);
@@ -81,7 +81,7 @@ public class WithdrawalCommandHandlerTests
                 t.Currency == Currency.USD &&
                 t.Type == TransactionType.Withdrawal &&
                 t.IdempotencyKey != Guid.Empty &&
-                t.Status == TransactionStatus.Processing
+                t.Status == TransactionStatus.Completed
             ),
             Arg.Any<CancellationToken>()
         );
@@ -95,7 +95,7 @@ public class WithdrawalCommandHandlerTests
                 e.Amount == 300m &&
                 e.Currency == "USD" &&
                 e.IdempotencyKey != Guid.Empty &&
-                e.Status == "Processing"
+                e.Status == "Completed"
             ),
             Arg.Any<CancellationToken>()
         );
@@ -124,10 +124,10 @@ public class WithdrawalCommandHandlerTests
     {
         // Arrange
         var accountNumber = "111111";
-        var account = new Account 
-        { 
-            Id = Guid.NewGuid(), 
-            AccountNumber = accountNumber, 
+        var account = new Account
+        {
+            Id = Guid.NewGuid(),
+            AccountNumber = accountNumber,
             Status = AccountStatus.Inactive,
             Balance = 500m
         };
@@ -150,10 +150,10 @@ public class WithdrawalCommandHandlerTests
     {
         // Arrange
         var accountNumber = "111111";
-        var account = new Account 
-        { 
-            Id = Guid.NewGuid(), 
-            AccountNumber = accountNumber, 
+        var account = new Account
+        {
+            Id = Guid.NewGuid(),
+            AccountNumber = accountNumber,
             Status = AccountStatus.Active,
             Balance = 50m
         };

@@ -82,7 +82,7 @@ public class WithdrawalCommandHandler : IRequestHandler<WithdrawalCommand, Resul
             Currency = request.Currency,
             Type = TransactionType.Withdrawal,
             IdempotencyKey = request.IdempotencyKey,
-            Status = TransactionStatus.Processing,
+            Status = TransactionStatus.Completed,
             CreatedAt = DateTime.UtcNow
         };
 
