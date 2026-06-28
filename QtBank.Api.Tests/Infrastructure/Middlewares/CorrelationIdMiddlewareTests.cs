@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -167,5 +168,45 @@ public class CorrelationIdMiddlewareTests
         context.Items.Should().ContainKey("SessionId");
         Guid.TryParse(context.Items["SessionId"]!.ToString(), out _).Should().BeTrue();
         sessionIdInScope.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenActivityIsActive_ShouldSetCorrelationIdAndSessionIdTagsOnActivity()
+    {
+        // Arrange
+        var context = new DefaultHttpContext();
+        var expectedCorrelationId = Guid.NewGuid().ToString();
+        context.Request.Headers["X-Correlation-Id"] = expectedCorrelationId;
+
+        // Generate a token which contains the SessionId
+        var token = QtBank.Api.Infrastructure.Security.TokenGenerator.GenerateToken("test-user");
+        context.Request.Headers["Authorization"] = $"Bearer {token}";
+
+        // Configure and start an Activity Source and Listener to simulate OpenTelemetry tracing
+        using var activitySource = new ActivitySource("TestActivitySource");
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        using var activity = activitySource.StartActivity("TestActivity");
+        activity.Should().NotBeNull();
+
+        RequestDelegate next = (ctx) => Task.CompletedTask;
+        var middleware = new CorrelationIdMiddleware(next, _logger, _options);
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        // Verify the correlation.id tag is set correctly
+        activity!.GetTagItem("correlation.id").Should().Be(expectedCorrelationId);
+        
+        // Verify the session.id tag is set correctly and matches the extracted SessionId
+        var expectedSessionId = context.Items["SessionId"]?.ToString();
+        expectedSessionId.Should().NotBeNullOrWhiteSpace();
+        activity.GetTagItem("session.id").Should().Be(expectedSessionId);
     }
 }

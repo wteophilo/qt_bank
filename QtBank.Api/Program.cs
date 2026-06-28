@@ -18,6 +18,7 @@ using QtBank.Api.Infrastructure.Security;
 using QtBank.Api.Infrastructure.Middlewares;
 using QtBank.Api.Infrastructure;
 using QtBank.Api.Infrastructure.Http;
+using QtBank.Api.Infrastructure.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using QtBank.Api.Infrastructure.Endpoints.v1;
 
@@ -89,6 +90,9 @@ builder.Services.AddSingleton<IPubSubPublisher, InMemoryPubSubPublisher>();
 
 // Configure Correlation ID Infrastructure
 builder.Services.AddCorrelationIdServices();
+
+// Configure Distributed Tracing with OpenTelemetry
+builder.Services.AddTelemetryServices("QtBank.Api");
 
 // Example registration of an external HttpClient using the CorrelationIdDelegatingHandler
 builder.Services.AddHttpClient("ExternalMicroservice", client =>
