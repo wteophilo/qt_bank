@@ -8,6 +8,7 @@ using QtBank.Api.Application.DTOs;
 using QtBank.Api.Domain.Events;
 using QtBank.Api.Domain.Models;
 using QtBank.Api.Domain.Repositories;
+using QtBank.Api.Infrastructure.Telemetry;
 using QtBank.Api.Infrastructure.Messaging;
 
 namespace QtBank.Api.Application.Transactions.Commands;
@@ -20,17 +21,20 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
     private readonly IOutboxRepository _outboxRepository;
+    private readonly ApplicationMetrics _metrics;
     private readonly ILogger<DepositCommandHandler> _logger;
 
     public DepositCommandHandler(
         IAccountRepository accountRepository,
         ITransactionRepository transactionRepository,
         IOutboxRepository outboxRepository,
+        ApplicationMetrics metrics,
         ILogger<DepositCommandHandler> logger)
     {
         _accountRepository = accountRepository;
         _transactionRepository = transactionRepository;
         _outboxRepository = outboxRepository;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -51,6 +55,7 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
         if (account is null)
         {
             _logger.LogError("Deposit failed: Account not found. {Account}", request.AccountNumber);
+            _metrics.RecordTransaction("Deposit", "Failed", (double)request.Amount);
             return Result<TransferResponse>.Fail("Account not found.");
         }
 
@@ -58,6 +63,7 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
         if (!account.IsActive())
         {
             _logger.LogError("Deposit failed: Account is not active. {Account}", request.AccountNumber);
+            _metrics.RecordTransaction("Deposit", "Failed", (double)request.Amount);
             return Result<TransferResponse>.Fail("Account is not active.");
         }
 
@@ -83,6 +89,8 @@ public class DepositCommandHandler : IRequestHandler<DepositCommand, Result<Tran
 
         // 5. Save Outbox Message
         await SaveOutboxMessageAsync(savedTx, cancellationToken);
+
+        _metrics.RecordTransaction("Deposit", "Success", (double)request.Amount);
 
         return Result<TransferResponse>.Ok(new TransferResponse(savedTx.Id, savedTx.Status.ToString(), savedTx.CreatedAt));
     }
