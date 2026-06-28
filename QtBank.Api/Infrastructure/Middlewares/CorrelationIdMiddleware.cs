@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Threading.Tasks;
@@ -64,6 +65,13 @@ public sealed class CorrelationIdMiddleware
             context.Response.Headers[_options.HeaderName] = correlationId;
         }
 
+        // Add correlation.id to the active OpenTelemetry Trace Activity
+        var activity = Activity.Current;
+        if (activity is not null)
+        {
+            activity.SetTag("correlation.id", correlationId);
+        }
+
         // 2. Log Enrichment: Add the Correlation ID to the log scope (using standard ILogger.BeginScope).
         var logScope = new Dictionary<string, object>
         {
@@ -87,6 +95,9 @@ public sealed class CorrelationIdMiddleware
                         var sessionId = sessionIdClaim.Value;
                         context.Items["SessionId"] = sessionId;
                         logScope["SessionId"] = sessionId;
+                        
+                        // Add session.id to the active OpenTelemetry Trace Activity
+                        activity?.SetTag("session.id", sessionId);
                     }
                 }
             }
