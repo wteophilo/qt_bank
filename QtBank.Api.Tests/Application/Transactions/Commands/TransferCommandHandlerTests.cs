@@ -17,7 +17,7 @@ public class TransferCommandHandlerTests
 {
     private readonly IAccountRepository _accountRepository;
     private readonly ITransactionRepository _transactionRepository;
-    private readonly IPubSubPublisher _publisher;
+    private readonly IOutboxRepository _outboxRepository;
     private readonly ILogger<TransferCommandHandler> _logger;
     private readonly TransferCommandHandler _handler;
 
@@ -25,12 +25,12 @@ public class TransferCommandHandlerTests
     {
         _accountRepository = Substitute.For<IAccountRepository>();
         _transactionRepository = Substitute.For<ITransactionRepository>();
-        _publisher = Substitute.For<IPubSubPublisher>();
+        _outboxRepository = Substitute.For<IOutboxRepository>();
         _logger = Substitute.For<ILogger<TransferCommandHandler>>();
         _handler = new TransferCommandHandler(
             _accountRepository,
             _transactionRepository,
-            _publisher,
+            _outboxRepository,
             _logger
         );
     }
@@ -101,17 +101,14 @@ public class TransferCommandHandlerTests
             Arg.Any<CancellationToken>()
         );
 
-        // Verify event published
-        await _publisher.Received(1).PublishAsync(
-            "transfers-topic",
-            Arg.Is<TransferCompleted>(e =>
-                e.TransactionId == result.Value.TransactionId &&
-                e.SourceAccountNumber == sourceAccountNumber &&
-                e.DestinationAccountNumber == destAccountNumber &&
-                e.Amount == 300m &&
-                e.Currency == "USD" &&
-                e.IdempotencyKey != Guid.Empty &&
-                e.Status == "Completed"
+        // Verify outbox message saved
+        await _outboxRepository.Received(1).SaveAsync(
+            Arg.Is<OutboxMessage>(m =>
+                m.Topic == "transfers-topic" &&
+                m.Type.Contains("TransferCompleted") &&
+                m.Content.Contains(sourceAccountNumber) &&
+                m.Content.Contains(destAccountNumber) &&
+                m.Content.Contains("300")
             ),
             Arg.Any<CancellationToken>()
         );
@@ -257,9 +254,9 @@ public class TransferCommandHandlerTests
         result.Value.Status.Should().Be("Completed");
         result.Value.Timestamp.Should().Be(existingTx.CreatedAt);
 
-        // Verify repository save and publisher were not called
+        // Verify repository save and outbox were not called
         await _accountRepository.DidNotReceiveWithAnyArgs().SaveAsync(Arg.Any<Account>(), Arg.Any<CancellationToken>());
         await _transactionRepository.DidNotReceive().SaveAsync(Arg.Any<Transaction>(), Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>());
+        await _outboxRepository.DidNotReceiveWithAnyArgs().SaveAsync(Arg.Any<OutboxMessage>(), Arg.Any<CancellationToken>());
     }
 }
